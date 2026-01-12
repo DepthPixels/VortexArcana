@@ -1,0 +1,30 @@
+# Visual Studio Stuff
+.vs/
+out/
+build/
+bin/
+obj/
+
+# Compiled Binaries
+*.exe
+*.dll
+*.pdb
+*.lib
+*.exp
+*.ilk
+
+# CMake Generated Files
+CMakeCache.txt
+CMakeFiles/
+CMakeSettings.json
+cmake_install.cmake
+install/
+
+# IDE Files
+*.user
+*.suo
+*.sln.doccache
+
+# Temp Files
+*.tmp
+*.bak

@@ -1,0 +1,37 @@
+cmake_minimum_required(VERSION 3.16)
+project(VortexArcana VERSION 0.1.0)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_subdirectory(external/SDL)
+
+set(IMGUI_DIR external/imgui)
+set(IMGUI_SOURCES
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_sdlrenderer3.cpp
+)
+
+add_executable(VortexArcana 
+    src/main.cpp 
+    src/Core/Engine.cpp 
+    ${IMGUI_SOURCES}
+)
+
+target_include_directories(VortexArcana PRIVATE 
+    src/
+    ${IMGUI_DIR}
+    ${IMGUI_DIR}/backends
+)
+
+target_link_libraries(VortexArcana PRIVATE SDL3::SDL3)
+
+add_custom_command(TARGET VortexArcana POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "$<TARGET_FILE:SDL3::SDL3>"
+    "$<TARGET_FILE_DIR:VortexArcana>"
+)

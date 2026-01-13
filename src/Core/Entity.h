@@ -26,8 +26,8 @@ namespace Vortex {
 		}
 
 		SDL_Texture* sprite = nullptr;
-		float width = 32.0f;
-		float height = 32.0f;
+		float width = 128.0f;
+		float height = 128.0f;
 
 		void SetSprite(SDL_Renderer* renderer, const char* spriteLocation) {
 			SDL_Surface* tempSurface = SDL_LoadBMP(spriteLocation);

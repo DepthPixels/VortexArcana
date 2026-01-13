@@ -19,7 +19,7 @@ bool Engine::Initialize() {
 	}
 
 	// Create the SDL Window.
-	m_window = SDL_CreateWindow("VortexArcana Engine v0.0.1", 1280, 720, SDL_WINDOW_RESIZABLE);
+	m_window = SDL_CreateWindow("VortexArcana Engine v0.0.1", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED);
 	if (!m_window) {
 		std::cerr << "Window Creation Error: " << SDL_GetError() << std::endl;
 		return false;

@@ -20,7 +20,8 @@ add_executable(VortexArcana
     src/main.cpp 
     src/Core/Engine.cpp 
     ${IMGUI_SOURCES}
-)
+    src/Core/Math.h
+    src/Core/Entity.h)
 
 target_include_directories(VortexArcana PRIVATE 
     src/
@@ -34,4 +35,11 @@ add_custom_command(TARGET VortexArcana POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "$<TARGET_FILE:SDL3::SDL3>"
     "$<TARGET_FILE_DIR:VortexArcana>"
+)
+
+# Copy the assets folder to the build directory automatically
+add_custom_command(TARGET VortexArcana POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+    "$<TARGET_FILE_DIR:VortexArcana>/assets"
 )

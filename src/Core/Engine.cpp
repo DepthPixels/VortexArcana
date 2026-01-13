@@ -70,7 +70,7 @@ void Engine::Update(float deltaTime) {
 }
 
 void Engine::Render() {
-	SDL_SetRenderDrawColor(m_renderer, 15, 15, 20, 255);
+	SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
 	SDL_RenderClear(m_renderer);
 
 	SDL_RenderPresent(m_renderer);

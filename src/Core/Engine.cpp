@@ -2,7 +2,7 @@
 #include <iostream>
 
 Engine::Engine()
-	: m_window(nullptr), m_renderer(nullptr), m_isRunning(false) {
+	: m_window(nullptr), m_renderer(nullptr), m_isOpen(false), m_isRunning(false) {
 	// Constructor Defaults.
 }
 
@@ -50,10 +50,15 @@ bool Engine::Initialize() {
 
 
 	// If nothing failed yet then initialization worked!
-	m_isRunning = true;
+	m_isOpen = true;
 	std::cout << "VortexArcana Systems Initialized." << std::endl;
 
-	m_player.SetSprite(m_renderer, "assets/player.bmp");
+	// Make an initial player entity.
+	Vortex::Entity player;
+	player.mass = 1000.0f;
+	player.SetSprite(m_renderer, "assets/player.bmp");
+
+	m_entities.push_back(player);
 
 	return true;
 }
@@ -61,7 +66,7 @@ bool Engine::Initialize() {
 void Engine::Run() {
 	uint64_t lastTime = SDL_GetTicks();
 
-	while (m_isRunning) {
+	while (m_isOpen) {
 		// Delta Time Calculation.
 		uint64_t currentTime = SDL_GetTicks();
 		float deltaTime = (currentTime - lastTime) / 1000.0f;
@@ -69,7 +74,7 @@ void Engine::Run() {
 
 		// Main Loop
 		ProcessInput();
-		Update(deltaTime);
+		if (m_isRunning) Update(deltaTime);
 		Render();
 	}
 }
@@ -81,9 +86,13 @@ void Engine::ProcessInput() {
 		// Send events to ImGui.
 		ImGui_ImplSDL3_ProcessEvent(&event);
 
+		if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+			Vortex::Vec2 mousePos = { event.button.x, event.button.y };
+		}
+
 		// Check for Exit and quit loop if true.
 		if (event.type == SDL_EVENT_QUIT) {
-			m_isRunning = false;
+			m_isOpen = false;
 		}
 	}
 }
@@ -98,18 +107,12 @@ bool CheckCollision(Vortex::Rect a, Vortex::Rect b) {
 void Engine::Update(float deltaTime) {
 	// Physics stuff.
 
-	Vortex::Vec2 gravityForce = m_gravityDirection * m_gravityStrength;
-	m_player.ApplyForce(gravityForce);
+	Vortex::Vec2 gravityForce = m_gravityDirection * m_gravityStrength * m_entities[0].mass * m_meterToPixel;
+	m_entities[0].ApplyForce(gravityForce);
 
-	m_player.velocity += m_player.acceleration * deltaTime;
+	m_entities[0].Integrate(deltaTime);
 
-	m_player.velocity.x *= 0.95f;
-
-	m_player.position += m_player.velocity * deltaTime;
-
-	m_player.acceleration = { 0, 0 };
-
-	// std::cout << "Collision: " << CheckCollision() << endl
+	// std::cout << "Collision: " << CheckCollision() << endl;
 }
 
 void Engine::Render() {
@@ -125,7 +128,7 @@ void Engine::Render() {
 	SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
 	SDL_RenderClear(m_renderer);
 
-	m_player.Draw(m_renderer);
+	m_entities[0].Draw(m_renderer);
 
 	// Reset Render Target.
 	SDL_SetRenderTarget(m_renderer, NULL);
@@ -148,6 +151,13 @@ void Engine::Render() {
 
 void Engine::ShowViewportWindow() {
 	ImGui::Begin("Game Viewport");
+
+	ImGui::BeginDisabled(m_isRunning);
+	if (ImGui::Button("Run")) m_isRunning = true;
+	ImGui::EndDisabled();
+	ImGui::BeginDisabled(!m_isRunning);
+	if (ImGui::Button("Stop")) m_isRunning = false;
+	ImGui::EndDisabled();
 
 	// Get Window Size
 	ImVec2 windowSize = ImGui::GetContentRegionAvail();
@@ -173,15 +183,15 @@ void Engine::ShowViewportWindow() {
 
 void Engine::ShowEditorUI() {
 	ImGui::Begin("Vortex Physics");
-	ImGui::Text("Player Pos: (%.2f, %.2f)", m_player.position.x, m_player.position.y);
-	ImGui::Text("Player Vel: (%.2f, %.2f)", m_player.velocity.x, m_player.velocity.y);
+	ImGui::Text("Player Pos: (%.2f, %.2f)", m_entities[0].position.x, m_entities[0].position.y);
+	ImGui::Text("Player Vel: (%.2f, %.2f)", m_entities[0].velocity.x, m_entities[0].velocity.y);
 	ImGui::End();
 
 	ImGui::Begin("Entity Inspector");
-	ImGui::Text("Player Sprite: %s", m_player.sprite ? "Loaded" : "Missing");
+	ImGui::Text("Player Sprite: %s", m_entities[0].sprite ? "Loaded" : "Missing");
 
-	ImGui::DragFloat("Width", &m_player.width, 16.0f, 256.0f);
-	ImGui::DragFloat("Height", &m_player.height, 16.0f, 256.0f);
+	ImGui::DragFloat("Width", &m_entities[0].width, 16.0f, 256.0f);
+	ImGui::DragFloat("Height", &m_entities[0].height, 16.0f, 256.0f);
 
 	ImGui::End();
 }

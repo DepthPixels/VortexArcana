@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlrenderer3.h"
@@ -22,14 +23,19 @@ private:
 
     SDL_Window* m_window = nullptr;
     SDL_Renderer* m_renderer = nullptr;
-    bool m_isRunning = false;
+    bool m_isOpen = false;
+	bool m_isRunning = false;
+
+    float m_meterToPixel = 20.0f;
+
+    Vortex::Vec2 m_viewportPosition;
 
     SDL_Texture* m_gameTexture = nullptr;
     Vortex::Vec2 m_viewportSize = { 1280, 720 };
 
     float m_gravityStrength = 9.8f;
-    Vortex::Vec2 m_gravityDirection = { 0.0f, -1.0f };
+    Vortex::Vec2 m_gravityDirection = { 0.0f, 1.0f };
     float m_magicColor[4] = { 0.5f, 0.0f, 1.0f, 1.0f };
 
-	Vortex::Entity m_player;
+    std::vector<Vortex::Entity> m_entities;
 };

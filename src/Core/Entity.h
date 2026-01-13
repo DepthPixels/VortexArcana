@@ -1,7 +1,6 @@
 #pragma once
 #include "Core/Math.h"
 #include <SDL3/SDL.h>
-#include <iostream>
 
 namespace Vortex {
 	class Entity {

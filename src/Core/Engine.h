@@ -1,5 +1,7 @@
 #pragma once
 #include <vector>
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui_internal.h"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlrenderer3.h"
@@ -28,7 +30,7 @@ private:
 
     float m_meterToPixel = 20.0f;
 
-    Vortex::Vec2 m_viewportPosition;
+    Vortex::Rect m_viewportRect;
 
     SDL_Texture* m_gameTexture = nullptr;
     Vortex::Vec2 m_viewportSize = { 1280, 720 };

@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 
 namespace Vortex {
 	struct Vec2 {
@@ -40,7 +41,18 @@ namespace Vortex {
 		}
 	};
 
-	struct Rect {
+	class Rect {
+	public:
 		float x, y, w, h;
+
+		bool isPosInRect(Vec2 pos) {
+			std::cout << std::endl << "Mouse Pos X: " << pos.x << " Y: " << pos.y << std::endl;
+			std::cout << "Viewport Pos X: " << x << " Y: " << y << std::endl;
+			std::cout << "Width: " << w << " Height: " << h << std::endl;
+			return (pos.x > x &&
+				pos.x < x + w &&
+				pos.y > y &&
+				pos.y < y + h);
+		}
 	};
 }

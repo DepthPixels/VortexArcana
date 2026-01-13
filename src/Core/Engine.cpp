@@ -87,7 +87,8 @@ void Engine::ProcessInput() {
 		ImGui_ImplSDL3_ProcessEvent(&event);
 
 		if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-			Vortex::Vec2 mousePos = { event.button.x, event.button.y };
+			Vortex::Vec2 clickPos = { event.button.x, event.button.y };
+			std::cout << "Is the click location in the viewport? : " << m_viewportRect.isPosInRect(clickPos) << std::endl;
 		}
 
 		// Check for Exit and quit loop if true.
@@ -95,13 +96,6 @@ void Engine::ProcessInput() {
 			m_isOpen = false;
 		}
 	}
-}
-
-bool CheckCollision(Vortex::Rect a, Vortex::Rect b) {
-	return (a.x < b.x + b.w &&
-		a.x + a.w > b.x &&
-		a.y < b.y + b.h &&
-		a.y + a.h > b.y);
 }
 
 void Engine::Update(float deltaTime) {
@@ -173,6 +167,15 @@ void Engine::ShowViewportWindow() {
 
 	float offsetX = (windowSize.x - renderWidth) * 0.5f;
 	float offsetY = (windowSize.y - renderHeight) * 0.5f;
+
+	ImVec2 windowPos = ImGui::GetWindowPos();
+
+	ImVec2 viewportPosition = windowPos + ImVec2(offsetX, offsetY);
+
+	m_viewportRect.x = ImGui::GetCursorPosX() + viewportPosition.x;
+	m_viewportRect.y = ImGui::GetCursorPosY() + viewportPosition.y;
+	m_viewportRect.w = renderWidth;
+	m_viewportRect.h = renderHeight;
 
 	ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPosX() + offsetX, ImGui::GetCursorPosY() + offsetY));
 

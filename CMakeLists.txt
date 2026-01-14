@@ -14,6 +14,7 @@ set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdlrenderer3.cpp
+    ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp
 )
 
 add_executable(VortexArcana 

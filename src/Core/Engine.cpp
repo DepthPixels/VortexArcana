@@ -87,25 +87,58 @@ void Engine::ProcessInput() {
 		// Send events to ImGui.
 		ImGui_ImplSDL3_ProcessEvent(&event);
 
-		if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-			Vortex::Vec2 clickPos = { event.button.x, event.button.y };
-			if (m_viewportRect.isPosInRect(clickPos)) {
-				Vortex::Vec2 viewportCoords = CoordsScreenToViewport(clickPos);
-				Vortex::Entity* clickedEntity = GetEntityAtViewportCoords(viewportCoords);
-				if (clickedEntity) {
-					clickedEntity->isSelected = true;
-				}
-				else {
-					for (Vortex::Entity& entity : m_entities) {
-						entity.isSelected = false;
+		switch (event.type) {
+		case SDL_EVENT_MOUSE_BUTTON_DOWN:
+			if (event.button.button == SDL_BUTTON_LEFT) {
+				Vortex::Vec2 clickPos = { event.button.x, event.button.y };
+				if (m_viewportRect.isPosInRect(clickPos)) {
+					Vortex::Vec2 viewportCoords = CoordsScreenToViewport(clickPos);
+					Vortex::Entity* clickedEntity = GetEntityAtViewportCoords(viewportCoords);
+					if (clickedEntity) {
+						m_isDragging = true;
+						for (Vortex::Entity& entity : m_entities) {
+							entity.isSelected = false;
+							entity.isBeingDragged = false;
+						}
+						clickedEntity->isSelected = true;
+						clickedEntity->isBeingDragged = true;
+						m_selectedEntity = clickedEntity;
+						m_dragOffset.x = clickedEntity->bounds.position.x - viewportCoords.x;
+						m_dragOffset.y = clickedEntity->bounds.position.y - viewportCoords.y;
+					}
+					else {
+						for (Vortex::Entity& entity : m_entities) {
+							entity.isSelected = false;
+							entity.isBeingDragged = false;
+						}
+						m_selectedEntity = nullptr;
 					}
 				}
 			}
+			break;
+		case SDL_EVENT_MOUSE_BUTTON_UP:
+			if (event.button.button == SDL_BUTTON_LEFT) {
+				Vortex::Vec2 clickPos = { event.button.x, event.button.y };
+				if (m_viewportRect.isPosInRect(clickPos)) {
+					m_isDragging = false;
+					for (Vortex::Entity& entity : m_entities) {
+						entity.isBeingDragged = false;
+					}
+				}
+			}
+			break;
+		case SDL_EVENT_MOUSE_MOTION: {
+			Vortex::Vec2 mousePos = { event.motion.x, event.motion.y };
+			if (m_isDragging) {
+				Vortex::Vec2 viewportCoords = CoordsScreenToViewport(mousePos);
+				m_selectedEntity->bounds.position = viewportCoords + m_dragOffset;
+				std::cout << "Entity " << m_selectedEntity->name << " Moved to Position (" << m_selectedEntity->bounds.position.x << ", " << m_selectedEntity->bounds.position.y << ")" << std::endl;
+			}
+			break;
 		}
-
-		// Check for Exit and quit loop if true.
-		if (event.type == SDL_EVENT_QUIT) {
+		case SDL_EVENT_QUIT:
 			m_isOpen = false;
+			break;
 		}
 	}
 }
@@ -197,16 +230,28 @@ void Engine::ShowViewportWindow() {
 }
 
 void Engine::ShowEditorUI() {
-	ImGui::Begin("Vortex Physics");
-	ImGui::Text("Player Pos: (%.2f, %.2f)", m_entities[0].bounds.position.x, m_entities[0].bounds.position.y);
-	ImGui::Text("Player Vel: (%.2f, %.2f)", m_entities[0].velocity.x, m_entities[0].velocity.y);
+	ImGui::Begin("Debug Window");
+	ImGui::Text("Mouse Offset: (%.2f, %.2f)", m_dragOffset.x, m_dragOffset.y);
+	ImGui::Text("Is Dragging: %s", m_isDragging ? "True" : "False");
 	ImGui::End();
 
-	ImGui::Begin("Entity Inspector");
-	ImGui::Text("Player Sprite: %s", m_entities[0].sprite ? "Loaded" : "Missing");
 
-	ImGui::DragFloat("Width", &m_entities[0].bounds.w, 16.0f, 256.0f);
-	ImGui::DragFloat("Height", &m_entities[0].bounds.h, 16.0f, 256.0f);
+	// Entity Inspector
+	ImGui::Begin("Entity Inspector");
+
+	if (m_selectedEntity == nullptr) {
+		ImGui::Text("Nothing Selected.");
+	}
+	else {
+		ImGui::InputText("Entity Name", &m_selectedEntity->name);
+
+		ImGui::Text("Position");
+		ImGui::DragFloat("X", &m_selectedEntity->bounds.position.x, 1.0f, 1.0f);
+		ImGui::DragFloat("Y", &m_selectedEntity->bounds.position.y, 1.0f, 1.0f);
+
+		ImGui::DragFloat("Width", &m_selectedEntity->bounds.w, 8.0f, 256.0f);
+		ImGui::DragFloat("Height", &m_selectedEntity->bounds.h, 8.0f, 256.0f);
+	}
 
 	ImGui::End();
 }
@@ -230,8 +275,13 @@ void Engine::Shutdown() {
 
 // Helper Functions
 Vortex::Vec2 Engine::CoordsScreenToViewport(Vortex::Vec2 screenCoords) {
-	Vortex::Vec2 viewportCoords = { screenCoords.x - m_viewportRect.position.x, screenCoords.y - m_viewportRect.position.y };
-	return viewportCoords;
+	float localX = screenCoords.x - m_viewportRect.position.x;
+	float localY = screenCoords.y - m_viewportRect.position.y;
+
+	float scaleX = 1280.0f / m_viewportRect.w;
+	float scaleY = 720.0f / m_viewportRect.h;
+
+	return { localX * scaleX, localY * scaleY };
 }
 
 Vortex::Entity* Engine::GetEntityAtViewportCoords(Vortex::Vec2 viewportCoords) {

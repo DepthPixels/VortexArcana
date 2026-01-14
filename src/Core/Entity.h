@@ -9,6 +9,7 @@ namespace Vortex {
 		Vortex::Vec2 acceleration;
 		Vortex::Rect bounds = {0.0f, 0.0f, 128.0f, 128.0f};
 		bool isSelected = false;
+		bool isBeingDragged = false;
 		std::string name = "Default";
 
 		float mass = 1.0f;
@@ -16,10 +17,14 @@ namespace Vortex {
 		Vortex::Vec2 forceAccumulator = { 0.0f, 0.0f };
 
 		void ApplyForce(Vortex::Vec2 force) {
+			if (isBeingDragged) return;
+
 			forceAccumulator += force;
 		}
 
 		void Integrate(float deltaTime) {
+			if (isBeingDragged) return;
+
 			acceleration = forceAccumulator * (1.0f / mass);
 			velocity += acceleration * deltaTime;
 			bounds.position += velocity * deltaTime;

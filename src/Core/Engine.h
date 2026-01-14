@@ -5,6 +5,7 @@
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlrenderer3.h"
+#include "misc/cpp/imgui_stdlib.h"
 #include "Core/Entity.h"
 
 class Engine {
@@ -31,6 +32,9 @@ private:
     SDL_Renderer* m_renderer = nullptr;
     bool m_isOpen = false;
 	bool m_isRunning = false;
+    bool m_isDragging = false;
+	Vortex::Entity* m_selectedEntity = nullptr;
+	Vortex::Vec2 m_dragOffset = { 0.0f, 0.0f };
 
     float m_meterToPixel = 20.0f;
 

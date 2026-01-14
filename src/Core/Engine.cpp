@@ -26,7 +26,7 @@ bool Engine::Initialize() {
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
 	// Create the SDL Window.
-	m_window = SDL_CreateWindow("VortexArcana Engine v0.0.1", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED | SDL_WINDOW_OPENGL);
+	m_window = SDL_CreateWindow("VortexArcana Engine v0.0.1", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
 	if (!m_window) {
 		std::cerr << "Window Creation Error: " << SDL_GetError() << std::endl;
 		return false;
@@ -65,7 +65,7 @@ bool Engine::Initialize() {
 	const char* fragmentShaderSource = "#version 460 core\n"
 		"out vec4 FragColor;\n"
 		"void main() {\n"
-		"   FragColor = vec4(0.8f, 0.3f, 0.0f, 1.0f);\n"
+		"   FragColor = vec4(0.0f, 1.0f, 1.0f, 1.0f);\n"
 		"}\n\0";
 
 	// Compile Shaders.
@@ -82,6 +82,19 @@ bool Engine::Initialize() {
 	glAttachShader(shaderProgram, vertexShader);
 	glAttachShader(shaderProgram, fragmentShader);
 	glLinkProgram(shaderProgram);
+
+	// Check for linking errors
+	int success2;
+	char infoLog2[512];
+	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success2);
+	if (!success2) {
+		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog2);
+		std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog2 << std::endl;
+	}
+	else {
+		std::cout << "VortexArcana: Shaders linked successfully!" << std::endl;
+	}
+
 
 	// Delete Shaders as they're linked now.
 	glDeleteShader(vertexShader);
@@ -237,13 +250,17 @@ void Engine::Update(float deltaTime) {
 }
 
 void Engine::Render() {
+
+	int w, h;
+	SDL_GetWindowSize(m_window, &w, &h);
+	glViewport(0, 0, w, h);
 	
 	// Start the ImGui Frame.
 	ImGui_ImplSDL3_NewFrame();
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui::NewFrame();
 
-	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
+	// ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 	
 	// ShowViewportWindow();
 
@@ -257,6 +274,8 @@ void Engine::Render() {
 
 	glUseProgram(m_shaderProgram);
 	glBindVertexArray(m_vao);
+
+	glDisable(GL_CULL_FACE);
 
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 

@@ -4,6 +4,9 @@ project(VortexArcana VERSION 0.1.0)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+
 add_subdirectory(external/SDL)
 
 set(IMGUI_DIR external/imgui)
@@ -23,6 +26,16 @@ add_executable(VortexArcana
     ${IMGUI_SOURCES}
     src/Core/Math.h
     src/Core/Entity.h)
+
+# Fix VS Hot Reload
+if(MSVC)
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "ProgramDatabase")
+    
+    add_compile_options(/Zi /Od)
+    add_link_options(/INCREMENTAL:NO)
+endif()
+
+
 
 target_include_directories(VortexArcana PRIVATE 
     src/

@@ -32,7 +32,7 @@ private:
     SDL_Window* m_window = nullptr;
 
 	SDL_GLContext m_glContext = nullptr;
-    unsigned int m_vao, m_vbo;
+    unsigned int m_vao, m_vbo, m_ebo;
     unsigned int m_shaderProgram;
 
     bool m_isOpen = false;

@@ -95,6 +95,7 @@ bool Engine::Initialize() {
 		std::cout << "VortexArcana: Shaders linked successfully!" << std::endl;
 	}
 
+	m_shaderProgram = shaderProgram;
 
 	// Delete Shaders as they're linked now.
 	glDeleteShader(vertexShader);
@@ -103,11 +104,17 @@ bool Engine::Initialize() {
 
 	// Geometry.
 	float vertices[] = {
-	-0.5f, -0.5f, 0.0f, // Left  
-	 0.5f, -0.5f, 0.0f, // Right 
-	 0.0f,  0.5f, 0.0f  // Top   
+	 0.5f,  0.5f, 0.0f,  // top right
+	 0.5f, -0.5f, 0.0f,  // bottom right
+	-0.5f, -0.5f, 0.0f,  // bottom left
+	-0.5f,  0.5f, 0.0f   // top left 
+	};
+	unsigned int indices[] = {
+		0, 1, 3,   // first triangle
+		1, 2, 3    // second triangle
 	};
 
+	glGenBuffers(1, &m_ebo);
 	glGenVertexArrays(1, &m_vao);
 	glGenBuffers(1, &m_vbo);
 
@@ -115,16 +122,17 @@ bool Engine::Initialize() {
 	glBindVertexArray(m_vao);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
 	// Tells OpenGL how to read the buffer (3 floats per vertex).
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
 	// Unbind.
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
-
-	m_shaderProgram = shaderProgram;
 
 	/*
 	m_gameTexture = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 1280, 720);
@@ -245,8 +253,6 @@ void Engine::Update(float deltaTime) {
 	m_entities[0].ApplyForce(gravityForce);
 
 	m_entities[0].Integrate(deltaTime);
-
-	// std::cout << "Collision: " << CheckCollision() << endl;
 }
 
 void Engine::Render() {
@@ -266,7 +272,7 @@ void Engine::Render() {
 
 	// Show Editor UI.
 	// ShowEditorUI();
-
+	
 	ImGui::Render();
 
 	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
@@ -274,10 +280,9 @@ void Engine::Render() {
 
 	glUseProgram(m_shaderProgram);
 	glBindVertexArray(m_vao);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
 
-	glDisable(GL_CULL_FACE);
-
-	glDrawArrays(GL_TRIANGLES, 0, 3);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

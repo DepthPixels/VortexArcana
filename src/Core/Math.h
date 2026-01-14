@@ -49,7 +49,8 @@ namespace Vortex {
 	class Rect {
 	public:
 		Vec2 position;
-		float w, h;
+		float w = 0.0f;
+		float h = 0.0f;
 
 		bool isPosInRect(Vec2 pos) {
 			return (pos.x > position.x &&

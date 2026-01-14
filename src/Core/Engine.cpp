@@ -2,7 +2,7 @@
 #include <iostream>
 
 Engine::Engine()
-	: m_window(nullptr), m_renderer(nullptr), m_isOpen(false), m_isRunning(false) {
+	: m_window(nullptr), m_isOpen(false), m_isRunning(false) {
 	// Constructor Defaults.
 }
 
@@ -18,24 +18,107 @@ bool Engine::Initialize() {
 		return false;
 	}
 
+	// Set OpenGL Attributes.
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+
 	// Create the SDL Window.
-	m_window = SDL_CreateWindow("VortexArcana Engine v0.0.1", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED);
+	m_window = SDL_CreateWindow("VortexArcana Engine v0.0.1", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED | SDL_WINDOW_OPENGL);
 	if (!m_window) {
 		std::cerr << "Window Creation Error: " << SDL_GetError() << std::endl;
 		return false;
 	}
 
+	m_glContext = SDL_GL_CreateContext(m_window);
+
 	// Putting in NULL as name of renderer is basically auto.
+	/*
 	m_renderer = SDL_CreateRenderer(m_window, NULL);
 	if (!m_renderer) {
 		std::cerr << "Renderer Creation Error: " << SDL_GetError() << std::endl;
 		return false;
 	}
+	*/
 
+	// Initialize GLAD.
+	if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
+	{
+		std::cout << "Failed to initialize GLAD" << std::endl;
+		return false;
+	}
+
+	// Viewport Size.
+	glViewport(0, 0, 1280, 720);
+
+	// Shaders
+	// Vertex Shader.
+	const char* vertexShaderSource = "#version 460 core\n"
+		"layout (location = 0) in vec3 aPos;\n"
+		"void main() {\n"
+		"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+		"}\0";
+
+	// Fragment Shader.
+	const char* fragmentShaderSource = "#version 460 core\n"
+		"out vec4 FragColor;\n"
+		"void main() {\n"
+		"   FragColor = vec4(0.8f, 0.3f, 0.0f, 1.0f);\n"
+		"}\n\0";
+
+	// Compile Shaders.
+	unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+	glCompileShader(vertexShader);
+
+	unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+	glCompileShader(fragmentShader);
+
+	// Link Shaders.
+	unsigned int shaderProgram = glCreateProgram();
+	glAttachShader(shaderProgram, vertexShader);
+	glAttachShader(shaderProgram, fragmentShader);
+	glLinkProgram(shaderProgram);
+
+	// Delete Shaders as they're linked now.
+	glDeleteShader(vertexShader);
+	glDeleteShader(fragmentShader);
+
+
+	// Geometry.
+	float vertices[] = {
+	-0.5f, -0.5f, 0.0f, // Left  
+	 0.5f, -0.5f, 0.0f, // Right 
+	 0.0f,  0.5f, 0.0f  // Top   
+	};
+
+	glGenVertexArrays(1, &m_vao);
+	glGenBuffers(1, &m_vbo);
+
+	// Bind VAO first, then bind and set VBO.
+	glBindVertexArray(m_vao);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	// Tells OpenGL how to read the buffer (3 floats per vertex).
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	// Unbind.
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	m_shaderProgram = shaderProgram;
+
+	/*
 	m_gameTexture = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 1280, 720);
 	if (m_gameTexture) {
 		SDL_SetTextureScaleMode(m_gameTexture, SDL_SCALEMODE_NEAREST);
 	}
+	*/
 
 	// ImGui setup.
 	IMGUI_CHECKVERSION();
@@ -45,9 +128,8 @@ bool Engine::Initialize() {
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable Docking
 
-	ImGui_ImplSDL3_InitForSDLRenderer(m_window, m_renderer);
-	ImGui_ImplSDLRenderer3_Init(m_renderer);
-
+	ImGui_ImplSDL3_InitForOpenGL(m_window, m_glContext);
+	ImGui_ImplOpenGL3_Init("#version 460 core");
 
 	// If nothing failed yet then initialization worked!
 	m_isOpen = true;
@@ -56,7 +138,7 @@ bool Engine::Initialize() {
 	// Make an initial player entity.
 	Vortex::Entity player;
 	player.mass = 1000.0f;
-	player.SetSprite(m_renderer, "assets/player.bmp");
+	//player.SetSprite(m_renderer, "assets/player.bmp");
 	player.name = "Player";
 
 	m_entities.push_back(player);
@@ -155,37 +237,32 @@ void Engine::Update(float deltaTime) {
 }
 
 void Engine::Render() {
+	
 	// Start the ImGui Frame.
-	ImGui_ImplSDLRenderer3_NewFrame();
 	ImGui_ImplSDL3_NewFrame();
+	ImGui_ImplOpenGL3_NewFrame();
 	ImGui::NewFrame();
 
-	// Set Render Target to Game Texture.
-	SDL_SetRenderTarget(m_renderer, m_gameTexture);
-
-	// Clear Screen.
-	SDL_SetRenderDrawColor(m_renderer, 0x00, 0x00, 0x00, 0xFF);
-	SDL_RenderClear(m_renderer);
-
-	m_entities[0].Draw(m_renderer);
-
-	// Reset Render Target.
-	SDL_SetRenderTarget(m_renderer, NULL);
-
 	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
-	ShowViewportWindow();
+	
+	// ShowViewportWindow();
 
 	// Show Editor UI.
-	ShowEditorUI();
-
-	SDL_SetRenderDrawColor(m_renderer, 0x00, 0x00, 0x00, 0xFF);
-	SDL_RenderClear(m_renderer);
+	// ShowEditorUI();
 
 	ImGui::Render();
 
-	ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), m_renderer);
+	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
 
-	SDL_RenderPresent(m_renderer);
+	glUseProgram(m_shaderProgram);
+	glBindVertexArray(m_vao);
+
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+	SDL_GL_SwapWindow(m_window);
 }
 
 void Engine::ShowViewportWindow() {
@@ -258,10 +335,11 @@ void Engine::ShowEditorUI() {
 
 void Engine::Shutdown() {
 	// Cleanup Function
-	if (m_renderer) {
-		SDL_DestroyRenderer(m_renderer);
-		m_renderer = nullptr;
-	}
+	glDeleteVertexArrays(1, &m_vao);
+	glDeleteBuffers(1, &m_vbo);
+	glDeleteProgram(m_shaderProgram);
+
+	SDL_GL_DestroyContext(m_glContext);
 
 	if (m_window) {
 		SDL_DestroyWindow(m_window);

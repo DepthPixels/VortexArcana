@@ -16,7 +16,7 @@ set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui_widgets.cpp
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_sdlrenderer3.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
     ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp
 )
 
@@ -35,12 +35,16 @@ if(MSVC)
     add_link_options(/INCREMENTAL:NO)
 endif()
 
-
+target_sources(VortexArcana PRIVATE 
+    src/main.cpp
+    external/glad/src/glad.c
+)
 
 target_include_directories(VortexArcana PRIVATE 
     src/
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
+    external/glad/include
 )
 
 target_link_libraries(VortexArcana PRIVATE SDL3::SDL3)

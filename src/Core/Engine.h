@@ -4,8 +4,9 @@
 #include "imgui_internal.h"
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
-#include "imgui_impl_sdlrenderer3.h"
+#include "imgui_impl_opengl3.h"
 #include "misc/cpp/imgui_stdlib.h"
+#include <glad/glad.h>
 #include "Core/Entity.h"
 
 class Engine {
@@ -29,7 +30,11 @@ private:
 	Vortex::Entity* GetEntityAtViewportCoords(Vortex::Vec2 viewportCoords);
 
     SDL_Window* m_window = nullptr;
-    SDL_Renderer* m_renderer = nullptr;
+
+	SDL_GLContext m_glContext = nullptr;
+    unsigned int m_vao, m_vbo;
+    unsigned int m_shaderProgram;
+
     bool m_isOpen = false;
 	bool m_isRunning = false;
     bool m_isDragging = false;

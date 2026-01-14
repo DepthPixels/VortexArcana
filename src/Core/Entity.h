@@ -5,10 +5,11 @@
 namespace Vortex {
 	class Entity {
 	public:
-		Vortex::Vec2 position;
 		Vortex::Vec2 velocity;
 		Vortex::Vec2 acceleration;
-		Vortex::Rect collider = {position.x, position.y, 0.0f, 0.0f};
+		Vortex::Rect bounds = {0.0f, 0.0f, 128.0f, 128.0f};
+		bool isSelected = false;
+		std::string name = "Default";
 
 		float mass = 1.0f;
 		
@@ -21,13 +22,11 @@ namespace Vortex {
 		void Integrate(float deltaTime) {
 			acceleration = forceAccumulator * (1.0f / mass);
 			velocity += acceleration * deltaTime;
-			position += velocity * deltaTime;
+			bounds.position += velocity * deltaTime;
 			forceAccumulator = { 0.0f, 0.0f };
 		}
 
 		SDL_Texture* sprite = nullptr;
-		float width = 128.0f;
-		float height = 128.0f;
 
 		void SetSprite(SDL_Renderer* renderer, const char* spriteLocation) {
 			SDL_Surface* tempSurface = SDL_LoadBMP(spriteLocation);
@@ -45,8 +44,12 @@ namespace Vortex {
 
 		void Draw(SDL_Renderer* renderer) {
 			if (sprite) {
-				SDL_FRect destRect = { position.x, position.y, width, height };
+				SDL_FRect destRect = { bounds.position.x, bounds.position.y, bounds.w, bounds.h };
 				SDL_RenderTexture(renderer, sprite, NULL, &destRect);
+				if (isSelected) {
+					SDL_SetRenderDrawColor(renderer, 0x45, 0x4A, 0xDE, 0xFF);
+					SDL_RenderRect(renderer, &destRect);
+				}
 			}
 		}
 	};

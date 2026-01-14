@@ -39,20 +39,23 @@ namespace Vortex {
 			x *= other.x;
 			y *= other.y;
 		}
+
+		// Type Conversions
+		explicit operator ImVec2() const {
+			return ImVec2{ x, y };
+		}
 	};
 
 	class Rect {
 	public:
-		float x, y, w, h;
+		Vec2 position;
+		float w, h;
 
 		bool isPosInRect(Vec2 pos) {
-			std::cout << std::endl << "Mouse Pos X: " << pos.x << " Y: " << pos.y << std::endl;
-			std::cout << "Viewport Pos X: " << x << " Y: " << y << std::endl;
-			std::cout << "Width: " << w << " Height: " << h << std::endl;
-			return (pos.x > x &&
-				pos.x < x + w &&
-				pos.y > y &&
-				pos.y < y + h);
+			return (pos.x > position.x &&
+				pos.x < position.x + w &&
+				pos.y > position.y &&
+				pos.y < position.y + h);
 		}
 	};
 }

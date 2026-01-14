@@ -23,6 +23,10 @@ private:
     void ShowEditorUI();
     void Render();
 
+    // Helper Functions
+    Vortex::Vec2 CoordsScreenToViewport(Vortex::Vec2 screenCoords);
+	Vortex::Entity* GetEntityAtViewportCoords(Vortex::Vec2 viewportCoords);
+
     SDL_Window* m_window = nullptr;
     SDL_Renderer* m_renderer = nullptr;
     bool m_isOpen = false;

@@ -57,6 +57,7 @@ bool Engine::Initialize() {
 	Vortex::Entity player;
 	player.mass = 1000.0f;
 	player.SetSprite(m_renderer, "assets/player.bmp");
+	player.name = "Player";
 
 	m_entities.push_back(player);
 
@@ -88,7 +89,18 @@ void Engine::ProcessInput() {
 
 		if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
 			Vortex::Vec2 clickPos = { event.button.x, event.button.y };
-			std::cout << "Is the click location in the viewport? : " << m_viewportRect.isPosInRect(clickPos) << std::endl;
+			if (m_viewportRect.isPosInRect(clickPos)) {
+				Vortex::Vec2 viewportCoords = CoordsScreenToViewport(clickPos);
+				Vortex::Entity* clickedEntity = GetEntityAtViewportCoords(viewportCoords);
+				if (clickedEntity) {
+					clickedEntity->isSelected = true;
+				}
+				else {
+					for (Vortex::Entity& entity : m_entities) {
+						entity.isSelected = false;
+					}
+				}
+			}
 		}
 
 		// Check for Exit and quit loop if true.
@@ -119,7 +131,7 @@ void Engine::Render() {
 	SDL_SetRenderTarget(m_renderer, m_gameTexture);
 
 	// Clear Screen.
-	SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
+	SDL_SetRenderDrawColor(m_renderer, 0x00, 0x00, 0x00, 0xFF);
 	SDL_RenderClear(m_renderer);
 
 	m_entities[0].Draw(m_renderer);
@@ -133,7 +145,7 @@ void Engine::Render() {
 	// Show Editor UI.
 	ShowEditorUI();
 
-	SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 255);
+	SDL_SetRenderDrawColor(m_renderer, 0x00, 0x00, 0x00, 0xFF);
 	SDL_RenderClear(m_renderer);
 
 	ImGui::Render();
@@ -172,8 +184,8 @@ void Engine::ShowViewportWindow() {
 
 	ImVec2 viewportPosition = windowPos + ImVec2(offsetX, offsetY);
 
-	m_viewportRect.x = ImGui::GetCursorPosX() + viewportPosition.x;
-	m_viewportRect.y = ImGui::GetCursorPosY() + viewportPosition.y;
+	m_viewportRect.position.x = ImGui::GetCursorPosX() + viewportPosition.x;
+	m_viewportRect.position.y = ImGui::GetCursorPosY() + viewportPosition.y;
 	m_viewportRect.w = renderWidth;
 	m_viewportRect.h = renderHeight;
 
@@ -186,15 +198,15 @@ void Engine::ShowViewportWindow() {
 
 void Engine::ShowEditorUI() {
 	ImGui::Begin("Vortex Physics");
-	ImGui::Text("Player Pos: (%.2f, %.2f)", m_entities[0].position.x, m_entities[0].position.y);
+	ImGui::Text("Player Pos: (%.2f, %.2f)", m_entities[0].bounds.position.x, m_entities[0].bounds.position.y);
 	ImGui::Text("Player Vel: (%.2f, %.2f)", m_entities[0].velocity.x, m_entities[0].velocity.y);
 	ImGui::End();
 
 	ImGui::Begin("Entity Inspector");
 	ImGui::Text("Player Sprite: %s", m_entities[0].sprite ? "Loaded" : "Missing");
 
-	ImGui::DragFloat("Width", &m_entities[0].width, 16.0f, 256.0f);
-	ImGui::DragFloat("Height", &m_entities[0].height, 16.0f, 256.0f);
+	ImGui::DragFloat("Width", &m_entities[0].bounds.w, 16.0f, 256.0f);
+	ImGui::DragFloat("Height", &m_entities[0].bounds.h, 16.0f, 256.0f);
 
 	ImGui::End();
 }
@@ -214,4 +226,24 @@ void Engine::Shutdown() {
 	SDL_Quit();
 
 	std::cout << "VortexArcana Systems Shutdown Cleanly." << std::endl;
+}
+
+// Helper Functions
+Vortex::Vec2 Engine::CoordsScreenToViewport(Vortex::Vec2 screenCoords) {
+	Vortex::Vec2 viewportCoords = { screenCoords.x - m_viewportRect.position.x, screenCoords.y - m_viewportRect.position.y };
+	return viewportCoords;
+}
+
+Vortex::Entity* Engine::GetEntityAtViewportCoords(Vortex::Vec2 viewportCoords) {
+	// Returns the first entity found at the given viewport coordinates.
+	for (Vortex::Entity& entity : m_entities) {
+		std::cout << "Checking Entity: " << entity.name << " at Pos (" << entity.bounds.position.x << ", " << entity.bounds.position.y << ")" << " and Width (" <<
+			entity.bounds.w << ", " << entity.bounds.h << ")" << std::endl;
+		std::cout << "Viewport Coords: (" << viewportCoords.x << ", " << viewportCoords.y << ")" << std::endl;
+		if (entity.bounds.isPosInRect(viewportCoords)) {
+			std::cout << "Clicked on Entity: " << entity.name << std::endl;
+			return &entity;
+		}
+	}
+	return nullptr;
 }

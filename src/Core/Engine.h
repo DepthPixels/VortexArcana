@@ -8,6 +8,7 @@
 #include "misc/cpp/imgui_stdlib.h"
 #include <glad/glad.h>
 #include "Core/Entity.h"
+#include "Core/Shader.h"
 
 class Engine {
 public:
@@ -33,6 +34,8 @@ private:
 
 	SDL_GLContext m_glContext = nullptr;
     unsigned int m_vao, m_vbo, m_ebo;
+    
+    // Shaders
     unsigned int m_shaderProgram;
 
     bool m_isOpen = false;

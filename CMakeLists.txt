@@ -20,8 +20,7 @@ set(IMGUI_SOURCES
     ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp
 )
 
-add_executable(VortexArcana 
-    src/main.cpp 
+add_executable(VortexArcana
     src/Core/Engine.cpp 
     ${IMGUI_SOURCES}
     src/Core/Math.h
@@ -38,6 +37,8 @@ endif()
 target_sources(VortexArcana PRIVATE 
     src/main.cpp
     external/glad/src/glad.c
+    assets/shaders/basicFragment.frag
+    assets/shaders/basicVertex.vert
 )
 
 target_include_directories(VortexArcana PRIVATE 
@@ -45,6 +46,8 @@ target_include_directories(VortexArcana PRIVATE
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
     external/glad/include
+    external/stb_image
+    external/glm
 )
 
 target_link_libraries(VortexArcana PRIVATE SDL3::SDL3)

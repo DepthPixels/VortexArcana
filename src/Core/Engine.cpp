@@ -273,12 +273,21 @@ void Engine::Render() {
 	
 	ImGui::Render();
 
+	// Transformations.
+	glm::mat4 trans = glm::mat4(1.0f);
+	trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
+	trans = glm::rotate(trans, (float)SDL_GetTicks(), glm::vec3(0.0f, 0.0f, 1.0f));
+
 	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glUseProgram(m_shaderProgram);
 	glUniform1i(glGetUniformLocation(m_shaderProgram, "texture1"), 0);
 	glUniform1i(glGetUniformLocation(m_shaderProgram, "texture2"), 1);
+	
+	// Setting Transform Uniform.
+	unsigned int transformLoc = glGetUniformLocation(m_shaderProgram, "transform");
+	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, m_texture);

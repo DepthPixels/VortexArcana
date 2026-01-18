@@ -6,7 +6,11 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_opengl3.h"
 #include "misc/cpp/imgui_stdlib.h"
+#include <stb_image.h>
 #include <glad/glad.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "Core/Entity.h"
 #include "Core/Shader.h"
 
@@ -37,6 +41,8 @@ private:
     
     // Shaders
     unsigned int m_shaderProgram;
+    unsigned int m_texture;
+    unsigned int m_texture2;
 
     bool m_isOpen = false;
 	bool m_isRunning = false;

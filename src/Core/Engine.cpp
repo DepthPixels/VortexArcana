@@ -1,3 +1,4 @@
+#define STB_IMAGE_IMPLEMENTATION
 #include "Engine.h"
 #include <iostream>
 
@@ -53,19 +54,54 @@ bool Engine::Initialize() {
 	// Viewport Size.
 	glViewport(0, 0, 1280, 720);
 
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	// Texture Stuff
+	int width, height, nrChannels;
+	unsigned char* data = stbi_load("assets/cloud.jpg", &width, &height, &nrChannels, 4);
+
+	glGenTextures(1, &m_texture);
+	glBindTexture(GL_TEXTURE_2D, m_texture);
+
+	// Generate Texture to the 2D texture target.
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	// Free Image Memory.
+	stbi_image_free(data);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	unsigned char* data2 = stbi_load("assets/yehyafreshman.png", &width, &height, &nrChannels, 4);
+	if (data2)
+	{
+		glGenTextures(1, &m_texture2);
+		glBindTexture(GL_TEXTURE_2D, m_texture2);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data2);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		stbi_image_free(data2);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
 	Shader basicShader("assets/shaders/basicVertex.vert", "assets/shaders/basicFragment.frag");
 
 	m_shaderProgram = basicShader.ID;
 
 	// Geometry.
 	float vertices[] = {
-		// positions         // colors
-		 0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,   // bottom right
-		-0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,   // bottom left
-		 0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f    // top 
+		// positions          // colors           // texture coords
+		 0.5f,  0.5f, 0.0f,   0.0f, 1.0f, 1.0f,   1.0f, 0.0f,   // top right
+		 0.5f, -0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   1.0f, 1.0f,   // bottom right
+		-0.5f, -0.5f, 0.0f,   1.0f, 0.5f, 0.5f,   0.0f, 1.0f,   // bottom left
+		-0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 1.0f,   0.0f, 0.0f    // top left 
 	};
 	unsigned int indices[] = {
-		0, 1, 2   // first triangle
+		0, 1, 3,   // first triangle
+		1, 2, 3    // second triangle
 	};
 
 	glGenVertexArrays(1, &m_vao);
@@ -81,12 +117,16 @@ bool Engine::Initialize() {
 
 	// Tells OpenGL how to read the buffer.
 	// Positions
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
 	// Colors
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
+
+	// Texture Coords
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+	glEnableVertexAttribArray(2);
 
 	// Unbind.
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -237,8 +277,15 @@ void Engine::Render() {
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glUseProgram(m_shaderProgram);
-	glBindVertexArray(m_vao);
+	glUniform1i(glGetUniformLocation(m_shaderProgram, "texture1"), 0);
+	glUniform1i(glGetUniformLocation(m_shaderProgram, "texture2"), 1);
 
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_texture);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, m_texture2);
+
+	glBindVertexArray(m_vao);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 	glBindVertexArray(0);

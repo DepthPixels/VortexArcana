@@ -63,14 +63,23 @@ bool Engine::Initialize() {
 	object1->AddComponent(spriteComponent);
 	m_entities.push_back(object1);
 
+	// Setting up FBO.
+	glGenFramebuffers(1, &m_fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
 
+	glGenTextures(1, &m_viewportTexture);
+	glBindTexture(GL_TEXTURE_2D, m_viewportTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (int)m_viewportSize.x, (int)m_viewportSize.y, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_viewportTexture, 0);
 
-	/*
-	m_gameTexture = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 1280, 720);
-	if (m_gameTexture) {
-		SDL_SetTextureScaleMode(m_gameTexture, SDL_SCALEMODE_NEAREST);
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	}
-	*/
+
+	// Unbind.
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	// ImGui setup.
 	IMGUI_CHECKVERSION();
@@ -86,14 +95,6 @@ bool Engine::Initialize() {
 	// If nothing failed yet then initialization worked!
 	m_isOpen = true;
 	std::cout << "VortexArcana Systems Initialized." << std::endl;
-	/*
-	// Make an initial player entity.
-	Vortex::Entity player;
-	//player.SetSprite(m_renderer, "assets/player.bmp");
-	player.name = "Player";
-
-	m_entities.push_back(player);
-	*/
 
 	return true;
 }
@@ -189,30 +190,41 @@ void Engine::Update(float deltaTime) {
 
 void Engine::Render() {
 
+	// Render Game to FBO.
+	glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+	// Game Resolution.
+	glViewport(0, 0, m_viewportSize.x, m_viewportSize.y);
+	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// Draw Entities.
+	for (Vortex::Entity* entity : m_entities) {
+		entity->RenderComponents();
+	}
+
+	// Unbind FBO.
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	int w, h;
 	SDL_GetWindowSize(m_window, &w, &h);
 	glViewport(0, 0, w, h);
+
+	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	// Start the ImGui Frame.
 	ImGui_ImplSDL3_NewFrame();
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui::NewFrame();
 
-	// ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
+	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport());
 	
-	// ShowViewportWindow();
+	ShowViewportWindow();
 
 	// Show Editor UI.
-	// ShowEditorUI();
+	ShowEditorUI();
 	
 	ImGui::Render();
-
-	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
-	
-	// Sraw.
-	for (Vortex::Entity* entity : m_entities) {
-		entity->RenderComponents();
-	}
 
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -255,7 +267,7 @@ void Engine::ShowViewportWindow() {
 
 	ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPosX() + offsetX, ImGui::GetCursorPosY() + offsetY));
 
-	ImGui::Image((ImTextureID)m_gameTexture, ImVec2(renderWidth, renderHeight));
+	ImGui::Image((ImTextureID)(uintptr_t)m_viewportTexture, ImVec2(renderWidth, renderHeight), ImVec2(0, 1), ImVec2(1, 0));
 
 	ImGui::End();
 }

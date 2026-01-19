@@ -51,8 +51,9 @@ private:
     float m_meterToPixel = 20.0f;
 
     Vortex::Rect m_viewportRect;
-
-    SDL_Texture* m_gameTexture = nullptr;
+    unsigned int m_fbo;
+    unsigned int m_viewportTexture;
+    unsigned int m_rbo;
     Vortex::Vec2 m_viewportSize = { 1280.0f, 720.0f };
 
     float m_gravityStrength = 9.8f;

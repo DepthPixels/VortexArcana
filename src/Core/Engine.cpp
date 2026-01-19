@@ -61,6 +61,9 @@ bool Engine::Initialize() {
 	Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D(basicShader);
 	spriteComponent->LoadSprite("assets/yehyafreshman.png", true);
 	object1->AddComponent(spriteComponent);
+	Vortex::Physics2D* physics2D = new Vortex::Physics2D();
+	physics2D->mass = 1000.0f;
+	object1->AddComponent(physics2D);
 	m_entities.push_back(object1);
 
 	// Setting up FBO.
@@ -180,12 +183,15 @@ void Engine::ProcessInput() {
 
 void Engine::Update(float deltaTime) {
 	// Physics stuff.
-	/*
-	Vortex::Vec2 gravityForce = m_gravityDirection * m_gravityStrength * m_entities[0].mass * m_meterToPixel;
-	m_entities[0].ApplyForce(gravityForce);
-
-	m_entities[0].Integrate(deltaTime);
-	*/
+	Vortex::Vec2 gravityForce = m_gravityDirection * m_gravityStrength * m_meterToPixel;
+	
+	for (Vortex::Entity* entity : m_entities) {
+		Vortex::Physics2D* physics2D = entity->GetComponent<Vortex::Physics2D>();
+		if (physics2D) {
+			physics2D->ApplyForce(gravityForce * physics2D->mass);
+		}
+		entity->UpdateComponents(deltaTime);
+	}
 }
 
 void Engine::Render() {

@@ -13,6 +13,7 @@
 #include "Core/Entity.h"
 #include "Core/Utility/Shader.h"
 #include "Core/Components/SpriteRenderer2D.h"
+#include "Core/Components/Physics2D.h"
 
 class Engine {
 public:

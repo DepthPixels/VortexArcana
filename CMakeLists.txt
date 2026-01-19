@@ -29,7 +29,9 @@ add_executable(VortexArcana
     src/Core/Components/SpriteRenderer2D.cpp
     src/Core/Utility/Textures.cpp
     src/Core/Component.h
-    src/Core/Entity.cpp)
+    src/Core/Entity.cpp
+    src/Core/Components/Physics2D.h
+    src/Core/Components/Physics2D.cpp)
 
 # Fix VS Hot Reload
 if(MSVC)

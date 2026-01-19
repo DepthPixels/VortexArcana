@@ -16,32 +16,37 @@ namespace Vortex {
 		bool isBeingDragged = false;
 		std::string name = "Default";
 
-		// Components.
-		std::vector<Component*> components;
-
 		// Component helpers.
 		void AddComponent(Component* component);
+		template <typename T>
+		T* GetComponent() {
+			for (Component* component : components) {
+				T* casted = dynamic_cast<T*>(component);
+				if (casted != nullptr) {
+					return casted;
+				}
+			}
+			return nullptr;
+		}
+
+		template <typename T>
+		std::vector<T*> GetComponents() {
+			for (Component* component : components) {
+				std::vector<T*> foundComponents;
+				T* casted = dynamic_cast<T*>(component);
+				if (casted != nullptr) {
+					foundComponents.push_back(casted);
+				}
+				return foundComponents;
+			}
+		}
+
 		void UpdateComponents(float deltaTime);
 		void RenderComponents();
 
 		~Entity();
-
-		/* To be moved when Physics2D is created.
-		void ApplyForce(Vortex::Vec2 force) {
-			if (isBeingDragged) return;
-
-			forceAccumulator += force;
-		}
-
-		
-		void Integrate(float deltaTime) {
-			if (isBeingDragged) return;
-
-			acceleration = forceAccumulator * (1.0f / mass);
-			velocity += acceleration * deltaTime;
-			bounds.position += velocity * deltaTime;
-			forceAccumulator = { 0.0f, 0.0f };
-		}
-		*/
+	private:
+		// Components.
+		std::vector<Component*> components;
 	};
 }

@@ -60,77 +60,34 @@ bool Engine::Initialize() {
 	// Texture Stuff
 	int width, height, nrChannels;
 	unsigned char* data = stbi_load("assets/cloud.jpg", &width, &height, &nrChannels, 4);
-
-	glGenTextures(1, &m_texture);
-	glBindTexture(GL_TEXTURE_2D, m_texture);
-
-	// Generate Texture to the 2D texture target.
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-	glGenerateMipmap(GL_TEXTURE_2D);
-
-	// Free Image Memory.
-	stbi_image_free(data);
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	unsigned char* data2 = stbi_load("assets/yehyafreshman.png", &width, &height, &nrChannels, 4);
-	if (data2)
+	if (data)
 	{
-		glGenTextures(1, &m_texture2);
-		glBindTexture(GL_TEXTURE_2D, m_texture2);
+		m_texture.Generate(width, height, data);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data2);
-		glGenerateMipmap(GL_TEXTURE_2D);
-
-		stbi_image_free(data2);
-
-		glBindTexture(GL_TEXTURE_2D, 0);
+		stbi_image_free(data);
 	}
 
-	Shader basicShader("assets/shaders/basicVertex.vert", "assets/shaders/basicFragment.frag");
+	// stbi_set_flip_vertically_on_load(true);
+	data = stbi_load("assets/yehyafreshman.png", &width, &height, &nrChannels, 4);
+	if (data)
+	{	
+		m_texture2.internalFormat = GL_RGBA;
+		m_texture2.imageFormat = GL_RGBA;
+		m_texture2.Generate(width, height, data);
 
-	m_shaderProgram = basicShader.ID;
+		stbi_image_free(data);
+	}
 
-	// Geometry.
-	float vertices[] = {
-		// positions          // colors           // texture coords
-		 0.5f,  0.5f, 0.0f,   0.0f, 1.0f, 1.0f,   1.0f, 0.0f,   // top right
-		 0.5f, -0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   1.0f, 1.0f,   // bottom right
-		-0.5f, -0.5f, 0.0f,   1.0f, 0.5f, 0.5f,   0.0f, 1.0f,   // bottom left
-		-0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 1.0f,   0.0f, 0.0f    // top left 
-	};
-	unsigned int indices[] = {
-		0, 1, 3,   // first triangle
-		1, 2, 3    // second triangle
-	};
+	Shader basicShader("assets/shaders/basicVertex.glsl", "assets/shaders/basicFragment.glsl");
 
-	glGenVertexArrays(1, &m_vao);
-	glGenBuffers(1, &m_vbo);
-	glGenBuffers(1, &m_ebo);
+	glm::mat4 projection = glm::ortho(0.0f, m_viewportSize.x, m_viewportSize.y, 0.0f, -1.0f, 1.0f);
 
-	// Bind VAO first, then bind and set VBO.
-	glBindVertexArray(m_vao);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	basicShader.use();
+	basicShader.setMat4("projection", projection);
 
-	// Tells OpenGL how to read the buffer.
-	// Positions
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
+	Renderer = new SpriteRenderer(basicShader);
 
-	// Colors
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-	glEnableVertexAttribArray(1);
 
-	// Texture Coords
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-	glEnableVertexAttribArray(2);
-
-	// Unbind.
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
 
 	/*
 	m_gameTexture = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 1280, 720);
@@ -273,31 +230,10 @@ void Engine::Render() {
 	
 	ImGui::Render();
 
-	// Transformations.
-	glm::mat4 trans = glm::mat4(1.0f);
-	trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
-	trans = glm::rotate(trans, (float)SDL_GetTicks(), glm::vec3(0.0f, 0.0f, 1.0f));
-
 	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	glUseProgram(m_shaderProgram);
-	glUniform1i(glGetUniformLocation(m_shaderProgram, "texture1"), 0);
-	glUniform1i(glGetUniformLocation(m_shaderProgram, "texture2"), 1);
 	
-	// Setting Transform Uniform.
-	unsigned int transformLoc = glGetUniformLocation(m_shaderProgram, "transform");
-	glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, m_texture);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, m_texture2);
-
-	glBindVertexArray(m_vao);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-	glBindVertexArray(0);
+	// Sraw.
+	Renderer->DrawSprite(m_texture2, Vortex::Vec2(200.0f, 200.0f), Vortex::Vec2(200.0f, 200.0f), 0.0f, Vortex::Vec3(1.0f, 1.0f, 1.0f));
 
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 

@@ -2,17 +2,11 @@
 #include <vector>
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
-#include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_opengl3.h"
 #include "misc/cpp/imgui_stdlib.h"
 #include <stb_image.h>
-#include <glad/glad.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
-#include "Core/Entity.h"
-#include "Core/Shader.h"
+#include "Core/SpriteRenderer.h"
 
 class Engine {
 public:
@@ -41,8 +35,8 @@ private:
     
     // Shaders
     unsigned int m_shaderProgram;
-    unsigned int m_texture;
-    unsigned int m_texture2;
+    Vortex::Texture2D m_texture;
+    Vortex::Texture2D m_texture2;
 
     bool m_isOpen = false;
 	bool m_isRunning = false;
@@ -55,7 +49,8 @@ private:
     Vortex::Rect m_viewportRect;
 
     SDL_Texture* m_gameTexture = nullptr;
-    Vortex::Vec2 m_viewportSize = { 1280, 720 };
+    SpriteRenderer* Renderer;
+    Vortex::Vec2 m_viewportSize = { 1280.0f, 720.0f };
 
     float m_gravityStrength = 9.8f;
     Vortex::Vec2 m_gravityDirection = { 0.0f, 1.0f };

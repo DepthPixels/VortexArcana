@@ -8,6 +8,7 @@ namespace Vortex {
 		Vortex::Vec2 velocity;
 		Vortex::Vec2 acceleration;
 		Vortex::Rect bounds = {0.0f, 0.0f, 128.0f, 128.0f};
+		float rotation = 0.0f;
 		bool isSelected = false;
 		bool isBeingDragged = false;
 		std::string name = "Default";

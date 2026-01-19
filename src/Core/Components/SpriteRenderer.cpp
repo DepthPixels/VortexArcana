@@ -1,6 +1,8 @@
 #include "SpriteRenderer.h"
 #include <glad/glad.h>
 
+using namespace Vortex;
+
 SpriteRenderer::SpriteRenderer(Shader& shader)
 	: shader("assets/shaders/basicVertex.glsl", "assets/shaders/basicFragment.glsl") {
 	initRenderData();
@@ -44,7 +46,22 @@ SpriteRenderer::~SpriteRenderer() {
 	glDeleteVertexArrays(1, &this->quadVAO);
 }
 
-void SpriteRenderer::DrawSprite(Vortex::Texture2D& texture, Vortex::Vec2 position, Vortex::Vec2 size, float rotation, Vortex::Vec3 color) {
+void SpriteRenderer::LoadSprite(const char* location, bool alpha) {
+	int width, height, nrChannels;
+	unsigned char* data = stbi_load(location, &width, &height, &nrChannels, 4);
+	if (data)
+	{
+		if (alpha) {
+			this->texture.internalFormat = GL_RGBA;
+			this->texture.imageFormat = GL_RGBA;
+		}
+		this->texture.Generate(width, height, data);
+		stbi_image_free(data);
+		this->spriteAssigned = true;
+	}
+}
+
+void SpriteRenderer::DrawSprite(Vortex::Vec2 position, Vortex::Vec2 size, float rotation, Vortex::Vec3 color) {
 
 	// Activate Shader Program.
 	this->shader.use();
@@ -65,7 +82,7 @@ void SpriteRenderer::DrawSprite(Vortex::Texture2D& texture, Vortex::Vec2 positio
 
 	// Bind Texture.
 	glActiveTexture(GL_TEXTURE0);
-	texture.Bind();
+	this->texture.Bind();
 
 	// Bind VAO, Draw, then Unbind.
 	glBindVertexArray(this->quadVAO);

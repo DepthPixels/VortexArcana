@@ -23,11 +23,11 @@ set(IMGUI_SOURCES
 add_executable(VortexArcana
     src/Core/Engine.cpp 
     ${IMGUI_SOURCES}
-    src/Core/Math.h
+    "src/Core/Utility/Math.h"
     src/Core/Entity.h
-    src/Core/Shader.h
-    src/Core/SpriteRenderer.cpp
-    src/Core/Textures.cpp)
+    "src/Core/Utility/Shader.h"
+    "src/Core/Components/SpriteRenderer.cpp"
+    "src/Core/Utility/Textures.cpp" "src/Core/Component.h" "src/Core/Entity.cpp")
 
 # Fix VS Hot Reload
 if(MSVC)

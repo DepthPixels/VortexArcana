@@ -3,6 +3,7 @@
 #include "Core/Component.h"
 #include "Core/Utility/Math.h"
 #include <vector>
+#include <string>
 #include <SDL3/SDL.h>
 
 namespace Vortex {

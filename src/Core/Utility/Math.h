@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include "imgui.h"
+#include <glm/glm.hpp>
 
 namespace Vortex {
 	struct Vec2 {

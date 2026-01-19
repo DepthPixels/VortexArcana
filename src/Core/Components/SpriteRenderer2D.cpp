@@ -1,3 +1,4 @@
+#define STB_IMAGE_IMPLEMENTATION
 #include "SpriteRenderer2D.h"
 #include <glad/glad.h>
 

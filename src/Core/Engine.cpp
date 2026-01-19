@@ -1,4 +1,3 @@
-#define STB_IMAGE_IMPLEMENTATION
 #include "Engine.h"
 #include <iostream>
 
@@ -35,15 +34,6 @@ bool Engine::Initialize() {
 
 	m_glContext = SDL_GL_CreateContext(m_window);
 
-	// Putting in NULL as name of renderer is basically auto.
-	/*
-	m_renderer = SDL_CreateRenderer(m_window, NULL);
-	if (!m_renderer) {
-		std::cerr << "Renderer Creation Error: " << SDL_GetError() << std::endl;
-		return false;
-	}
-	*/
-
 	// Initialize GLAD.
 	if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
 	{
@@ -58,26 +48,6 @@ bool Engine::Initialize() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	// Texture Stuff
-	int width, height, nrChannels;
-	unsigned char* data = stbi_load("assets/cloud.jpg", &width, &height, &nrChannels, 4);
-	if (data)
-	{
-		m_texture.Generate(width, height, data);
-
-		stbi_image_free(data);
-	}
-
-	// stbi_set_flip_vertically_on_load(true);
-	data = stbi_load("assets/yehyafreshman.png", &width, &height, &nrChannels, 4);
-	if (data)
-	{	
-		m_texture2.internalFormat = GL_RGBA;
-		m_texture2.imageFormat = GL_RGBA;
-		m_texture2.Generate(width, height, data);
-
-		stbi_image_free(data);
-	}
-
 	Shader basicShader("assets/shaders/basicVertex.glsl", "assets/shaders/basicFragment.glsl");
 
 	glm::mat4 projection = glm::ortho(0.0f, m_viewportSize.x, m_viewportSize.y, 0.0f, -1.0f, 1.0f);
@@ -85,7 +55,13 @@ bool Engine::Initialize() {
 	basicShader.use();
 	basicShader.setMat4("projection", projection);
 
-	Renderer = new SpriteRenderer(basicShader);
+	Vortex::Entity* object1 = new Vortex::Entity();
+	object1->name = "Yehya Freshman Sprite";
+	object1->bounds = { 300.0f, 200.0f, 200.0f, 200.0f };
+	Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D(basicShader);
+	spriteComponent->LoadSprite("assets/yehyafreshman.png", true);
+	object1->AddComponent(spriteComponent);
+	m_entities.push_back(object1);
 
 
 
@@ -110,14 +86,14 @@ bool Engine::Initialize() {
 	// If nothing failed yet then initialization worked!
 	m_isOpen = true;
 	std::cout << "VortexArcana Systems Initialized." << std::endl;
-
+	/*
 	// Make an initial player entity.
 	Vortex::Entity player;
-	player.mass = 1000.0f;
 	//player.SetSprite(m_renderer, "assets/player.bmp");
 	player.name = "Player";
 
 	m_entities.push_back(player);
+	*/
 
 	return true;
 }
@@ -154,9 +130,9 @@ void Engine::ProcessInput() {
 					Vortex::Entity* clickedEntity = GetEntityAtViewportCoords(viewportCoords);
 					if (clickedEntity) {
 						m_isDragging = true;
-						for (Vortex::Entity& entity : m_entities) {
-							entity.isSelected = false;
-							entity.isBeingDragged = false;
+						for (Vortex::Entity* entity : m_entities) {
+							entity->isSelected = false;
+							entity->isBeingDragged = false;
 						}
 						clickedEntity->isSelected = true;
 						clickedEntity->isBeingDragged = true;
@@ -165,9 +141,9 @@ void Engine::ProcessInput() {
 						m_dragOffset.y = clickedEntity->bounds.position.y - viewportCoords.y;
 					}
 					else {
-						for (Vortex::Entity& entity : m_entities) {
-							entity.isSelected = false;
-							entity.isBeingDragged = false;
+						for (Vortex::Entity* entity : m_entities) {
+							entity->isSelected = false;
+							entity->isBeingDragged = false;
 						}
 						m_selectedEntity = nullptr;
 					}
@@ -179,8 +155,8 @@ void Engine::ProcessInput() {
 				Vortex::Vec2 clickPos = { event.button.x, event.button.y };
 				if (m_viewportRect.isPosInRect(clickPos)) {
 					m_isDragging = false;
-					for (Vortex::Entity& entity : m_entities) {
-						entity.isBeingDragged = false;
+					for (Vortex::Entity* entity : m_entities) {
+						entity->isBeingDragged = false;
 					}
 				}
 			}
@@ -203,11 +179,12 @@ void Engine::ProcessInput() {
 
 void Engine::Update(float deltaTime) {
 	// Physics stuff.
-
+	/*
 	Vortex::Vec2 gravityForce = m_gravityDirection * m_gravityStrength * m_entities[0].mass * m_meterToPixel;
 	m_entities[0].ApplyForce(gravityForce);
 
 	m_entities[0].Integrate(deltaTime);
+	*/
 }
 
 void Engine::Render() {
@@ -233,7 +210,9 @@ void Engine::Render() {
 	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
 	
 	// Sraw.
-	Renderer->DrawSprite(m_texture2, Vortex::Vec2(200.0f, 200.0f), Vortex::Vec2(200.0f, 200.0f), 0.0f, Vortex::Vec3(1.0f, 1.0f, 1.0f));
+	for (Vortex::Entity* entity : m_entities) {
+		entity->RenderComponents();
+	}
 
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -339,13 +318,13 @@ Vortex::Vec2 Engine::CoordsScreenToViewport(Vortex::Vec2 screenCoords) {
 
 Vortex::Entity* Engine::GetEntityAtViewportCoords(Vortex::Vec2 viewportCoords) {
 	// Returns the first entity found at the given viewport coordinates.
-	for (Vortex::Entity& entity : m_entities) {
-		std::cout << "Checking Entity: " << entity.name << " at Pos (" << entity.bounds.position.x << ", " << entity.bounds.position.y << ")" << " and Width (" <<
-			entity.bounds.w << ", " << entity.bounds.h << ")" << std::endl;
+	for (Vortex::Entity* entity : m_entities) {
+		std::cout << "Checking Entity: " << entity->name << " at Pos (" << entity->bounds.position.x << ", " << entity->bounds.position.y << ")" << " and Width (" <<
+			entity->bounds.w << ", " << entity->bounds.h << ")" << std::endl;
 		std::cout << "Viewport Coords: (" << viewportCoords.x << ", " << viewportCoords.y << ")" << std::endl;
-		if (entity.bounds.isPosInRect(viewportCoords)) {
-			std::cout << "Clicked on Entity: " << entity.name << std::endl;
-			return &entity;
+		if (entity->bounds.isPosInRect(viewportCoords)) {
+			std::cout << "Clicked on Entity: " << entity->name << std::endl;
+			return entity;
 		}
 	}
 	return nullptr;

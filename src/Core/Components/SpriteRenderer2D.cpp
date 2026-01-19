@@ -1,15 +1,15 @@
-#include "SpriteRenderer.h"
+#include "SpriteRenderer2D.h"
 #include <glad/glad.h>
 
 using namespace Vortex;
 
-SpriteRenderer::SpriteRenderer(Shader& shader)
+SpriteRenderer2D::SpriteRenderer2D(Shader& shader)
 	: shader("assets/shaders/basicVertex.glsl", "assets/shaders/basicFragment.glsl") {
 	initRenderData();
 	this->shader = shader;
 };
 	
-void SpriteRenderer::initRenderData() {
+void SpriteRenderer2D::initRenderData() {
 	unsigned int VBO;
 	// Basic Quad.
 	float vertices[] = {
@@ -42,11 +42,11 @@ void SpriteRenderer::initRenderData() {
 	glBindVertexArray(0);
 }
 
-SpriteRenderer::~SpriteRenderer() {
+SpriteRenderer2D::~SpriteRenderer2D() {
 	glDeleteVertexArrays(1, &this->quadVAO);
 }
 
-void SpriteRenderer::LoadSprite(const char* location, bool alpha) {
+void SpriteRenderer2D::LoadSprite(const char* location, bool alpha) {
 	int width, height, nrChannels;
 	unsigned char* data = stbi_load(location, &width, &height, &nrChannels, 4);
 	if (data)
@@ -61,7 +61,7 @@ void SpriteRenderer::LoadSprite(const char* location, bool alpha) {
 	}
 }
 
-void SpriteRenderer::DrawSprite(Vortex::Vec2 position, Vortex::Vec2 size, float rotation, Vortex::Vec3 color) {
+void SpriteRenderer2D::DrawSprite(Vortex::Vec2 position, Vortex::Vec2 size, float rotation, Vortex::Vec3 color) {
 
 	// Activate Shader Program.
 	this->shader.use();

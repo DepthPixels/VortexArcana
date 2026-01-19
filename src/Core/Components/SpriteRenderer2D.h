@@ -9,10 +9,10 @@
 #include "Core/Utility/Textures.h"
 
 namespace Vortex {
-	class SpriteRenderer : public Component {
+	class SpriteRenderer2D : public Component {
 	public:
-		SpriteRenderer(Shader& shader);
-		~SpriteRenderer();
+		SpriteRenderer2D(Shader& shader);
+		~SpriteRenderer2D();
 
 		bool spriteAssigned = false;
 

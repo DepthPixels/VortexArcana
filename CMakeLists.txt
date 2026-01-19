@@ -26,7 +26,7 @@ add_executable(VortexArcana
     "src/Core/Utility/Math.h"
     src/Core/Entity.h
     "src/Core/Utility/Shader.h"
-    "src/Core/Components/SpriteRenderer.cpp"
+    "src/Core/Components/SpriteRenderer2D.cpp"
     "src/Core/Utility/Textures.cpp" "src/Core/Component.h" "src/Core/Entity.cpp")
 
 # Fix VS Hot Reload

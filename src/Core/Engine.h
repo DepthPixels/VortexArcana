@@ -42,6 +42,7 @@ private:
     
     // Shaders
     unsigned int m_shaderProgram;
+    Shader* m_basicShader = nullptr;
 
     bool m_isOpen = false;
 	bool m_isRunning = false;

@@ -2,7 +2,7 @@
 #include <iostream>
 
 Engine::Engine()
-	: m_window(nullptr), m_isOpen(false), m_isRunning(false) {
+	: m_window(nullptr), m_isOpen(false), m_isRunning(false), m_basicShader(nullptr) {
 	// Constructor Defaults.
 }
 
@@ -24,6 +24,7 @@ bool Engine::Initialize() {
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
 	// Create the SDL Window.
 	m_window = SDL_CreateWindow("VortexArcana Engine v0.0.1", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
@@ -45,20 +46,21 @@ bool Engine::Initialize() {
 	glViewport(0, 0, 1280, 720);
 
 	glEnable(GL_BLEND);
+	glEnable(GL_STENCIL_TEST);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	// Texture Stuff
-	Shader basicShader("assets/shaders/basicVertex.glsl", "assets/shaders/basicFragment.glsl");
+	m_basicShader = new Shader("assets/shaders/basicVertex.glsl", "assets/shaders/basicFragment.glsl");
 
 	glm::mat4 projection = glm::ortho(0.0f, m_viewportSize.x, m_viewportSize.y, 0.0f, -1.0f, 1.0f);
 
-	basicShader.use();
-	basicShader.setMat4("projection", projection);
+	m_basicShader->use();
+	m_basicShader->setMat4("projection", projection);
 
 	Vortex::Entity* object1 = new Vortex::Entity();
 	object1->name = "Yehya Freshman Sprite";
 	object1->bounds = { 300.0f, 200.0f, 200.0f, 200.0f };
-	Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D(basicShader);
+	Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D(m_basicShader);
 	spriteComponent->LoadSprite("assets/yehyafreshman.png", true);
 	object1->AddComponent(spriteComponent);
 	Vortex::Physics2D* physics2D = new Vortex::Physics2D();
@@ -76,6 +78,13 @@ bool Engine::Initialize() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_viewportTexture, 0);
+
+	// Render Buffer Object
+	unsigned int rbo;
+	glGenRenderbuffers(1, &rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, (int)m_viewportSize.x, (int)m_viewportSize.y);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
@@ -170,7 +179,6 @@ void Engine::ProcessInput() {
 			if (m_isDragging) {
 				Vortex::Vec2 viewportCoords = CoordsScreenToViewport(mousePos);
 				m_selectedEntity->bounds.position = viewportCoords + m_dragOffset;
-				std::cout << "Entity " << m_selectedEntity->name << " Moved to Position (" << m_selectedEntity->bounds.position.x << ", " << m_selectedEntity->bounds.position.y << ")" << std::endl;
 			}
 			break;
 		}
@@ -201,7 +209,10 @@ void Engine::Render() {
 	// Game Resolution.
 	glViewport(0, 0, m_viewportSize.x, m_viewportSize.y);
 	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+	// Stencil Buffer stuff.
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
 	// Draw Entities.
 	for (Vortex::Entity* entity : m_entities) {
@@ -282,6 +293,22 @@ void Engine::ShowEditorUI() {
 	ImGui::Begin("Debug Window");
 	ImGui::Text("Mouse Offset: (%.2f, %.2f)", m_dragOffset.x, m_dragOffset.y);
 	ImGui::Text("Is Dragging: %s", m_isDragging ? "True" : "False");
+	ImGui::Text("Is Selected: %s", (m_selectedEntity != nullptr) ? (m_selectedEntity->isSelected) ? "True" : "False" : "Nothing Selected");
+	ImGui::End();
+
+	// Working Tree
+	ImGui::Begin("Working Tree");
+	for (Vortex::Entity* entity : m_entities) {
+		if (ImGui::Button(("- %s", entity->name.c_str()))) {
+			m_selectedEntity = entity;
+		}
+	}
+	if (ImGui::Button("Add Entity")) {
+		Vortex::Entity* newEntity = new Vortex::Entity();
+		newEntity->bounds.position = { 100.0f, 100.0f };
+		newEntity->name = "New Entity";
+		m_entities.push_back(newEntity);
+	}
 	ImGui::End();
 
 
@@ -300,6 +327,41 @@ void Engine::ShowEditorUI() {
 
 		ImGui::DragFloat("Width", &m_selectedEntity->bounds.w, 8.0f, 256.0f);
 		ImGui::DragFloat("Height", &m_selectedEntity->bounds.h, 8.0f, 256.0f);
+
+		ImGui::Text("Components");
+		if (m_selectedEntity->GetAllComponents().size() != 0) {
+			for (Vortex::Component* component : m_selectedEntity->GetAllComponents()) {
+				Vortex::SpriteRenderer2D* sprite = dynamic_cast<Vortex::SpriteRenderer2D*>(component);
+				if (sprite) {
+					ImGui::Text("- Sprite Renderer 2D");
+					std::string spriteLocationBuffer = sprite->spriteLocation;
+					std::string oldStringLocation = spriteLocationBuffer;
+					ImGui::InputText("Sprite Location", &spriteLocationBuffer);
+					if (ImGui::IsItemDeactivatedAfterEdit() && (spriteLocationBuffer != oldStringLocation)) {
+						sprite->LoadSprite(spriteLocationBuffer.c_str(), true);
+						oldStringLocation = spriteLocationBuffer;
+					}
+				}
+			}
+		}
+		else {
+			if (ImGui::Button("Add Component")) {
+				ImGui::OpenPopup("AddComponentPopup");
+			}
+		}
+
+		// Add Component Popup
+		if (ImGui::BeginPopup("AddComponentPopup")) {
+			if (ImGui::Selectable("Sprite Renderer 2D")) {
+				Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D(m_basicShader);
+				m_selectedEntity->AddComponent(spriteComponent);
+			}
+			if (ImGui::Selectable("Physics 2D")) {
+				Vortex::Physics2D* physicsComponent = new Vortex::Physics2D();
+				m_selectedEntity->AddComponent(physicsComponent);
+			}
+			ImGui::EndPopup();
+		}
 	}
 
 	ImGui::End();

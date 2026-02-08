@@ -11,10 +11,11 @@
 namespace Vortex {
 	class SpriteRenderer2D : public Component {
 	public:
-		SpriteRenderer2D(Shader& shader);
+		SpriteRenderer2D(Shader* shader);
 		~SpriteRenderer2D();
 
 		bool spriteAssigned = false;
+		std::string spriteLocation = "None";
 
 		Vortex::Texture2D texture;
 
@@ -28,8 +29,14 @@ namespace Vortex {
 			}
 		}
 
+		// Getters
+		std::string GetName() override {
+			return "SpriteRenderer2D";
+		}
+
 	private:
-		Shader shader;
+		Shader* shader;
+		Shader* singleColorShader;
 		unsigned int quadVAO;
 
 		void initRenderData();

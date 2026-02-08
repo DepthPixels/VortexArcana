@@ -18,6 +18,10 @@ namespace Vortex {
 
 		// Component helpers.
 		void AddComponent(Component* component);
+		std::vector<Component*> GetAllComponents() {
+			return components;
+		}
+
 		template <typename T>
 		T* GetComponent() {
 			for (Component* component : components) {

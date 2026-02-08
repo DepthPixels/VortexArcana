@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace Vortex {
     // Forward declaration fixes circular includes.
     class Entity;
@@ -19,5 +21,9 @@ namespace Vortex {
 
         // Called every frame for rendering.
         virtual void Render() {}
+
+        virtual std::string GetName() {
+            return "Default";
+		}
     };
 }

@@ -31,7 +31,8 @@ add_executable(VortexArcana
     src/Core/Component.h
     src/Core/Entity.cpp
     src/Core/Components/Physics2D.h
-    src/Core/Components/Physics2D.cpp)
+    src/Core/Components/Physics2D.cpp
+      "src/Core/Entities/Tile.h")
 
 # Fix VS Hot Reload
 if(MSVC)

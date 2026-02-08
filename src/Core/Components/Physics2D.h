@@ -17,6 +17,11 @@ namespace Vortex {
 		void Update(float deltaTime) override {
 			Integrate(deltaTime);
 		}
+
+		// Getters
+		std::string GetName() override {
+			return "Physics2D";
+		}
 	private:
 		Vortex::Vec2 velocity = { 0.0f, 0.0f };
 		Vortex::Vec2 acceleration = { 0.0f, 0.0f };

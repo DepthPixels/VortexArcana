@@ -1,0 +1,3 @@
+[submodule "external/ryml"]
+	path = external/ryml
+	url = https://github.com/biojppm/rapidyaml

@@ -4,11 +4,14 @@ project(VortexArcana VERSION 0.1.0)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Disable building tests/examples for dependencies
 set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SDL_TESTS OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(external/SDL)
+add_subdirectory(external/ryml)
 
+# ImGui Setup
 set(IMGUI_DIR external/imgui)
 set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui.cpp
@@ -20,19 +23,30 @@ set(IMGUI_SOURCES
     ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp
 )
 
-add_executable(VortexArcana
-    src/Core/Engine.cpp 
-    ${IMGUI_SOURCES}
-    src/Core/Utility/Math.h
-    src/Core/Entity.h
-    src/Core/Utility/Shader.h
-    src/Core/Components/SpriteRenderer2D.cpp
-    src/Core/Utility/Textures.cpp
-    src/Core/Component.h
+# Project Sources (Consolidated for easier maintenance)
+set(VORTEX_SOURCES
+    src/main.cpp
+    src/Core/Engine.cpp
+    src/Core/Engine.h
     src/Core/Entity.cpp
-    src/Core/Components/Physics2D.h
+    src/Core/Entity.h
+    src/Core/Component.h
+    src/Core/Utility/Math.h
+    src/Core/Utility/Shader.h
+    src/Core/Utility/Textures.cpp
+    src/Core/Utility/Textures.h
+    src/Core/Utility/SceneUtility.cpp
+    src/Core/Utility/SceneUtility.h
+    src/Core/Components/SpriteRenderer2D.cpp
     src/Core/Components/Physics2D.cpp
-      "src/Core/Entities/Tile.h")
+    src/Core/Components/Physics2D.h
+    src/Core/Entities/Tile.h
+    external/glad/src/glad.c
+    assets/shaders/basicFragment.glsl
+    assets/shaders/basicVertex.glsl
+)
+
+add_executable(VortexArcana ${VORTEX_SOURCES} ${IMGUI_SOURCES})
 
 # Fix VS Hot Reload
 if(MSVC)
@@ -41,13 +55,6 @@ if(MSVC)
     add_compile_options(/Zi /Od)
     add_link_options(/INCREMENTAL:NO)
 endif()
-
-target_sources(VortexArcana PRIVATE 
-    src/main.cpp
-    external/glad/src/glad.c
-    assets/shaders/basicFragment.frag
-    assets/shaders/basicVertex.vert
-)
 
 target_include_directories(VortexArcana PRIVATE 
     src/
@@ -58,8 +65,12 @@ target_include_directories(VortexArcana PRIVATE
     external/glm
 )
 
-target_link_libraries(VortexArcana PRIVATE SDL3::SDL3)
+target_link_libraries(VortexArcana PRIVATE 
+    SDL3::SDL3 
+    ryml::ryml
+)
 
+# Copy SDL3 DLL
 add_custom_command(TARGET VortexArcana POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     "$<TARGET_FILE:SDL3::SDL3>"

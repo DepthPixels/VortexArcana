@@ -50,21 +50,22 @@ bool Engine::Initialize() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	// Texture Stuff
+	/*
 	m_basicShader = new Shader("assets/shaders/basicVertex.glsl", "assets/shaders/basicFragment.glsl");
 
-	glm::mat4 projection = glm::ortho(0.0f, m_viewportSize.x, m_viewportSize.y, 0.0f, -1.0f, 1.0f);
-
 	m_basicShader->use();
+	glm::mat4 projection = glm::ortho(0.0f, m_viewportSize.x, m_viewportSize.y, 0.0f, -1.0f, 1.0f);
 	m_basicShader->setMat4("projection", projection);
+	*/
 
 	Vortex::Entity* object1 = new Vortex::Entity();
 	object1->name = "Yehya Freshman Sprite";
 	object1->bounds = { 300.0f, 200.0f, 200.0f, 200.0f };
-	Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D(m_basicShader);
+	Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D;
 	spriteComponent->LoadSprite("assets/yehyafreshman.png", true);
 	object1->AddComponent(spriteComponent);
 	Vortex::Physics2D* physics2D = new Vortex::Physics2D();
-	physics2D->mass = 1000.0f;
+	physics2D->Mass() = 1000.0f;
 	object1->AddComponent(physics2D);
 	m_entities.push_back(object1);
 
@@ -74,7 +75,7 @@ bool Engine::Initialize() {
 
 	glGenTextures(1, &m_viewportTexture);
 	glBindTexture(GL_TEXTURE_2D, m_viewportTexture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (int)m_viewportSize.x, (int)m_viewportSize.y, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (int)m_viewportSize.x, (int)m_viewportSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_viewportTexture, 0);
@@ -141,24 +142,31 @@ void Engine::ProcessInput() {
 				if (m_viewportRect.isPosInRect(clickPos)) {
 					Vortex::Vec2 viewportCoords = CoordsScreenToViewport(clickPos);
 					Vortex::Entity* clickedEntity = GetEntityAtViewportCoords(viewportCoords);
-					if (clickedEntity) {
-						m_isDragging = true;
-						for (Vortex::Entity* entity : m_entities) {
-							entity->isSelected = false;
-							entity->isBeingDragged = false;
-						}
-						clickedEntity->isSelected = true;
-						clickedEntity->isBeingDragged = true;
-						m_selectedEntity = clickedEntity;
-						m_dragOffset.x = clickedEntity->bounds.position.x - viewportCoords.x;
-						m_dragOffset.y = clickedEntity->bounds.position.y - viewportCoords.y;
+					if (m_tilingMode) {
+						Vortex::Vec2 tilePlaceCoords = Vortex::Vec2(int(viewportCoords.x) - (int(viewportCoords.x) % 32), int(viewportCoords.y) - (int(viewportCoords.y) % 32));
+						Vortex::Entity* newTile = new Vortex::Tile(tilePlaceCoords, m_selectedTileLocation);
+						m_entities.push_back(newTile);
 					}
 					else {
-						for (Vortex::Entity* entity : m_entities) {
-							entity->isSelected = false;
-							entity->isBeingDragged = false;
+						if (clickedEntity) {
+							m_isDragging = true;
+							for (Vortex::Entity* entity : m_entities) {
+								entity->isSelected = false;
+								entity->isBeingDragged = false;
+							}
+							clickedEntity->isSelected = true;
+							clickedEntity->isBeingDragged = true;
+							m_selectedEntity = clickedEntity;
+							m_dragOffset.x = clickedEntity->bounds.position.x - viewportCoords.x;
+							m_dragOffset.y = clickedEntity->bounds.position.y - viewportCoords.y;
 						}
-						m_selectedEntity = nullptr;
+						else {
+							for (Vortex::Entity* entity : m_entities) {
+								entity->isSelected = false;
+								entity->isBeingDragged = false;
+							}
+							m_selectedEntity = nullptr;
+						}
 					}
 				}
 			}
@@ -182,6 +190,12 @@ void Engine::ProcessInput() {
 			}
 			break;
 		}
+		case SDL_EVENT_KEY_DOWN:
+			if (event.key.key == SDLK_ESCAPE) {
+				m_tilingMode = false;
+				m_selectedTileLocation = "None";
+			}
+			break;
 		case SDL_EVENT_QUIT:
 			m_isOpen = false;
 			break;
@@ -196,7 +210,7 @@ void Engine::Update(float deltaTime) {
 	for (Vortex::Entity* entity : m_entities) {
 		Vortex::Physics2D* physics2D = entity->GetComponent<Vortex::Physics2D>();
 		if (physics2D) {
-			physics2D->ApplyForce(gravityForce * physics2D->mass);
+			physics2D->ApplyForce(gravityForce * physics2D->Mass());
 		}
 		entity->UpdateComponents(deltaTime);
 	}
@@ -208,6 +222,11 @@ void Engine::Render() {
 	glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
 	// Game Resolution.
 	glViewport(0, 0, m_viewportSize.x, m_viewportSize.y);
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDisable(GL_DEPTH_TEST);
+
 	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -290,14 +309,25 @@ void Engine::ShowViewportWindow() {
 }
 
 void Engine::ShowEditorUI() {
+	// Debug Window
 	ImGui::Begin("Debug Window");
 	ImGui::Text("Mouse Offset: (%.2f, %.2f)", m_dragOffset.x, m_dragOffset.y);
 	ImGui::Text("Is Dragging: %s", m_isDragging ? "True" : "False");
 	ImGui::Text("Is Selected: %s", (m_selectedEntity != nullptr) ? (m_selectedEntity->isSelected) ? "True" : "False" : "Nothing Selected");
+	ImGui::Text("Tiling Mode: %s", (m_tilingMode) ? "True" : "False");
+	ImGui::Text("Selected Tile Location: %s", (m_tilingMode) ? m_selectedTileLocation.c_str() : "Tiling Mode Off");
+	if (ImGui::Button("Reset Tile Location")) {
+		m_selectedTileLocation = "None";
+	}
 	ImGui::End();
 
 	// Working Tree
 	ImGui::Begin("Working Tree");
+	ImGui::BeginDisabled(m_isRunning);
+	ImGui::InputText("Scene Name", &this->currentScene);
+	if (ImGui::Button("Save Scene")) Vortex::SceneUtility::SaveScene(this->m_entities, "assets/scenes/" + this->currentScene + ".scene");
+	if (ImGui::Button("Load Default Scene")) Vortex::SceneUtility::LoadScene(this->m_entities, "assets/scenes/Default Scene.scene");
+	ImGui::EndDisabled();
 	for (Vortex::Entity* entity : m_entities) {
 		if (ImGui::Button(("- %s", entity->name.c_str()))) {
 			m_selectedEntity = entity;
@@ -342,28 +372,50 @@ void Engine::ShowEditorUI() {
 						oldStringLocation = spriteLocationBuffer;
 					}
 				}
+				Vortex::Physics2D* physics = dynamic_cast<Vortex::Physics2D*>(component);
+				if (physics) {
+					ImGui::Text("- Physics 2D");
+					ImGui::DragFloat("Mass", &physics->Mass(), 1.0f, 0.1f, 10000.0f);
+					ImGui::Text("Velocity: (%.2f, %.2f)", physics->Velocity().x, physics->Velocity().y);
+				}
 			}
 		}
-		else {
-			if (ImGui::Button("Add Component")) {
-				ImGui::OpenPopup("AddComponentPopup");
-			}
+		
+		if (ImGui::Button("Add Component")) {
+			ImGui::OpenPopup("AddComponentPopup");
 		}
 
 		// Add Component Popup
 		if (ImGui::BeginPopup("AddComponentPopup")) {
 			if (ImGui::Selectable("Sprite Renderer 2D")) {
-				Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D(m_basicShader);
+				Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D;
 				m_selectedEntity->AddComponent(spriteComponent);
 			}
 			if (ImGui::Selectable("Physics 2D")) {
 				Vortex::Physics2D* physicsComponent = new Vortex::Physics2D();
 				m_selectedEntity->AddComponent(physicsComponent);
+				std::cout << "Added Physics2D Component to " << m_selectedEntity->name << std::endl;
 			}
 			ImGui::EndPopup();
 		}
 	}
+	ImGui::End();
 
+	// Tile Manager
+	ImGui::Begin("Tile Manager");
+	std::string newTileLocationBuffer;
+	ImGui::InputText("New Tile Location: ", &newTileLocationBuffer);
+	if (ImGui::IsItemDeactivatedAfterEdit()) {
+		if (newTileLocationBuffer != "None" && newTileLocationBuffer != "") {
+			m_tileLocations.push_back(newTileLocationBuffer);
+			std::cout << "Added Tile Location: " << newTileLocationBuffer << std::endl;
+		}
+	}
+	for (std::string location : m_tileLocations) {
+		if (ImGui::Button(location.c_str())) {
+			m_selectedTileLocation = location;
+		}
+	}
 	ImGui::End();
 }
 
@@ -399,11 +451,7 @@ Vortex::Vec2 Engine::CoordsScreenToViewport(Vortex::Vec2 screenCoords) {
 Vortex::Entity* Engine::GetEntityAtViewportCoords(Vortex::Vec2 viewportCoords) {
 	// Returns the first entity found at the given viewport coordinates.
 	for (Vortex::Entity* entity : m_entities) {
-		std::cout << "Checking Entity: " << entity->name << " at Pos (" << entity->bounds.position.x << ", " << entity->bounds.position.y << ")" << " and Width (" <<
-			entity->bounds.w << ", " << entity->bounds.h << ")" << std::endl;
-		std::cout << "Viewport Coords: (" << viewportCoords.x << ", " << viewportCoords.y << ")" << std::endl;
 		if (entity->bounds.isPosInRect(viewportCoords)) {
-			std::cout << "Clicked on Entity: " << entity->name << std::endl;
 			return entity;
 		}
 	}

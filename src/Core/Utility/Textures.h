@@ -1,3 +1,5 @@
+#pragma once
+
 namespace Vortex {
 	class Texture2D {
 	public:

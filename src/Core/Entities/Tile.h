@@ -7,13 +7,13 @@
 namespace Vortex {
 	class Tile : public Entity {
 	public:
-		Tile(Texture2D spriteTexture, Vec2 position, const char* textureAddress) {
+		Tile(Vec2 position, std::string textureAddress) {
 			bounds.w = 32.0f;
 			bounds.h = 32.0f;
 			bounds.position = position;
-			Shader tileShader("assets/shaders/basicVertex.glsl", "assets/shaders/basicFragment.glsl");
+			Shader* tileShader = new Shader("assets/shaders/basicVertex.glsl", "assets/shaders/basicFragment.glsl");
 			SpriteRenderer2D* spriteComponent = new SpriteRenderer2D(tileShader);
-			spriteComponent->LoadSprite(textureAddress, true);
+			spriteComponent->LoadSprite(textureAddress.c_str(), true);
 			AddComponent(spriteComponent);
 		}
 	};

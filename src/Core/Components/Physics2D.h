@@ -10,8 +10,6 @@ namespace Vortex {
 		Physics2D();
 		~Physics2D();
 
-		float mass = 1.0f;
-
 		void ApplyForce(Vortex::Vec2 force);
 
 		void Update(float deltaTime) override {
@@ -22,11 +20,25 @@ namespace Vortex {
 		std::string GetName() override {
 			return "Physics2D";
 		}
+
+		float& Mass() {
+			return mass;
+		}
+
+		Vec2& Velocity() {
+			return velocity;
+		}
+
+		Vec2& Acceleration() {
+			return acceleration;
+		}
 	private:
-		Vortex::Vec2 velocity = { 0.0f, 0.0f };
-		Vortex::Vec2 acceleration = { 0.0f, 0.0f };
-		Vortex::Vec2 forceAccumulator = { 0.0f, 0.0f };
+		Vec2 velocity = { 0.0f, 0.0f };
+		Vec2 acceleration = { 0.0f, 0.0f };
+		Vec2 forceAccumulator = { 0.0f, 0.0f };
 
 		void Integrate(float deltaTime);
+
+		float mass = 1.0f;
 	};
 }

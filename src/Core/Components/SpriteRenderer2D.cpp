@@ -5,12 +5,9 @@
 
 using namespace Vortex;
 
-SpriteRenderer2D::SpriteRenderer2D(Shader* shader)
-	: shader(nullptr) {
+SpriteRenderer2D::SpriteRenderer2D(Shader* shader): shader(shader) {
 	initRenderData();
-	if (shader) {
-		this->shader = shader;
-	} else {
+	if (!shader) {
 		this->shader = new Shader("assets/shaders/basicVertex.glsl", "assets/shaders/basicFragment.glsl");
 	}
 	this->singleColorShader = new Shader("assets/shaders/basicVertex.glsl", "assets/shaders/singleColorFragment.glsl");
@@ -86,7 +83,9 @@ void SpriteRenderer2D::DrawSprite(Vortex::Vec2 position, Vortex::Vec2 size, floa
 	model = glm::scale(model, glm::vec3((glm::vec2)size, 1.0f));
 
 	// Set Shader Uniforms.
-	shader->setMat4("model", model);
+	this->shader->setMat4("model", model);
+	glm::mat4 projection = glm::ortho(0.0f, 1280.0f, 720.0f, 0.0f, -1.0f, 1.0f);
+	this->shader->setMat4("projection", projection);
 	shader->setVec3("spriteColor", color);
 
 	// Bind Texture.

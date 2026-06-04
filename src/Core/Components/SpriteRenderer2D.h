@@ -11,7 +11,7 @@
 namespace Vortex {
 	class SpriteRenderer2D : public Component {
 	public:
-		SpriteRenderer2D(Shader* shader);
+		SpriteRenderer2D(Shader* shader = nullptr);
 		~SpriteRenderer2D();
 
 		bool spriteAssigned = false;

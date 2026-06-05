@@ -319,6 +319,9 @@ void Engine::ShowEditorUI() {
 	if (ImGui::Button("Reset Tile Location")) {
 		m_selectedTileLocation = "None";
 	}
+	if (ImGui::Button("Send Host Event")) {
+		run_app_example(STR("F:\\Cpp\\VortexArcana\\out\\build\\windows-vs2026\\Debug\\"));
+	}
 	ImGui::End();
 
 	// Working Tree

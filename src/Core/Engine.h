@@ -15,6 +15,7 @@
 #include "Core/Entities/Tile.h"
 #include "Core/Utility/Shader.h"
 #include "Core/Utility/SceneUtility.h"
+#include "Core/Utility/ScriptingInterface.h"
 #include "Core/Components/SpriteRenderer2D.h"
 #include "Core/Components/Physics2D.h"
 

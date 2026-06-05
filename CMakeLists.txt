@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(VortexArcana VERSION 0.1.0)
+project(ScriptingEngineMonolith LANGUAGES CXX CSharp)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -37,6 +38,7 @@ set(VORTEX_SOURCES
     src/Core/Utility/Textures.h
     src/Core/Utility/SceneUtility.cpp
     src/Core/Utility/SceneUtility.h
+    src/Core/Utility/ScriptingInterface.h
     src/Core/Components/SpriteRenderer2D.cpp
     src/Core/Components/Physics2D.cpp
     src/Core/Components/Physics2D.h
@@ -63,11 +65,13 @@ target_include_directories(VortexArcana PRIVATE
     external/glad/include
     external/stb_image
     external/glm
+    external/nethost/include
 )
 
 target_link_libraries(VortexArcana PRIVATE 
     SDL3::SDL3 
     ryml::ryml
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/nethost/lib/nethost.lib
 )
 
 # Copy SDL3 DLL
@@ -77,9 +81,37 @@ add_custom_command(TARGET VortexArcana POST_BUILD
     "$<TARGET_FILE_DIR:VortexArcana>"
 )
 
+# Copy nethost dll
+add_custom_command(TARGET VortexArcana POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_CURRENT_SOURCE_DIR}/external/nethost/lib/nethost.dll"
+    "$<TARGET_FILE_DIR:VortexArcana>"
+)
+
 # Copy the assets folder to the build directory automatically
 add_custom_command(TARGET VortexArcana POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${CMAKE_CURRENT_SOURCE_DIR}/assets"
     "$<TARGET_FILE_DIR:VortexArcana>/assets"
 )
+
+# CSharp Stuff
+
+add_custom_target(ScriptHandler ALL
+    COMMAND dotnet build "${CMAKE_CURRENT_SOURCE_DIR}/src/Core/CSharp/ScriptHandler.csproj" --configuration $<CONFIG> --output "${CMAKE_CURRENT_BINARY_DIR}/csharp_out"
+    COMMENT "Compiling C# Script Engine natively via .NET 10 CLI..."
+)
+
+add_dependencies(VortexArcana ScriptHandler)
+
+add_custom_command(TARGET VortexArcana POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_BINARY_DIR}/csharp_out"
+        "$<TARGET_FILE_DIR:VortexArcana>"
+    COMMENT "Deploying .NET 10 binaries into the VortexArcana runtime directory..."
+)
+
+# Replace standard include_directories with SYSTEM to suppress their warnings
+target_include_directories(VortexArcana SYSTEM PRIVATE external/)
+
+

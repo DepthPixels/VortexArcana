@@ -3,6 +3,9 @@ using System;
 
 public class DihScript : BaseEntity
 {
+    public string digga = "diggadiggadigga";
+
+
     public override void Update()
     {
         Console.WriteLine("DihScript Update has run successfully. Ptr is " + ScriptInstancePtr);

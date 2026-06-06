@@ -60,8 +60,6 @@ namespace ScriptEngine
             foreach (BaseEntity? script in _engine?.CurrentInstances?.Values ?? Enumerable.Empty<BaseEntity?>())
             {
                 script?.Update();
-                script?.SaveState(_engine.SavedStates[script.ScriptInstancePtr]);
-                script?.ReloadState(_engine.SavedStates[script.ScriptInstancePtr]);
             }
 
             return 100; // Return execution status code back to C++

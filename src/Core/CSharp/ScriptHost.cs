@@ -1,13 +1,14 @@
-using VortexArcana;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Scripting;
 using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using System.Runtime.Loader;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
+using VortexArcana;
 
 namespace ScriptHost
 {
@@ -139,6 +140,16 @@ namespace ScriptHost
                         if (script != null)
                         {
                             oldInstances[script.ScriptInstancePtr] = script.GetType().Name;
+                            script.SaveState(SavedStates![script.ScriptInstancePtr]);
+                            Console.WriteLine($"Saved state for EntityID: {script.ScriptInstancePtr} of type {script.GetType().Name}");
+                            Console.WriteLine("Saved States Status:");
+                            foreach ((IntPtr id, Dictionary<string, object> states) in SavedStates)
+                            {
+                                foreach ((string varname, object value) in states)
+                                {
+                                    Console.WriteLine($"   {varname}: {value}");
+                                }
+                            }
                         }
                     }
                     CurrentInstances = null;
@@ -186,6 +197,8 @@ namespace ScriptHost
             List<FieldDeclarationSyntax> publicFields = classDec.DescendantNodes().OfType<FieldDeclarationSyntax>()
                 .Where(f => f.Modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword))).ToList();
 
+            Console.WriteLine($"Found {publicFields.Count} public fields to inject into Save/ReloadState methods.");
+
             // Save State
             // Test Print Statement
             ExpressionStatementSyntax printSaveStatement = SyntaxFactory.ExpressionStatement(
@@ -207,6 +220,29 @@ namespace ScriptHost
                     )
                 )
             );
+            SyntaxList<StatementSyntax> saveStatements = SyntaxFactory.List<StatementSyntax>();
+            foreach (FieldDeclarationSyntax field in publicFields) {
+                ElementAccessExpressionSyntax mapAccess = SyntaxFactory.ElementAccessExpression(
+                    SyntaxFactory.IdentifierName("SaveMap"),
+                    SyntaxFactory.BracketedArgumentList(
+                        SyntaxFactory.SingletonSeparatedList<ArgumentSyntax>(
+                            SyntaxFactory.Argument(
+                                SyntaxFactory.LiteralExpression(
+                                    SyntaxKind.StringLiteralExpression,
+                                    SyntaxFactory.Literal(field.Declaration.Variables.First().Identifier.ValueText)
+                                )
+                            )
+                        )
+                    )
+                );
+                ExpressionSyntax assignmentExpr = SyntaxFactory.AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    mapAccess,
+                    SyntaxFactory.IdentifierName(field.Declaration.Variables.First().Identifier)
+                );
+                saveStatements = saveStatements.Add(SyntaxFactory.ExpressionStatement(assignmentExpr));
+            }
+            saveStatements = saveStatements.Add(printSaveStatement);
 
             MethodDeclarationSyntax saveState = SyntaxFactory.MethodDeclaration(
                 SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)),
@@ -217,7 +253,7 @@ namespace ScriptHost
                     SyntaxFactory.Parameter(SyntaxFactory.Identifier("SaveMap")).WithType(SyntaxFactory.ParseTypeName("Dictionary<string, object>"))
                 })
             ))
-            .WithBody(SyntaxFactory.Block(printSaveStatement))
+            .WithBody(SyntaxFactory.Block(saveStatements))
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.OverrideKeyword));
 
             // Reload State
@@ -241,6 +277,102 @@ namespace ScriptHost
                     )
                 )
             );
+            SyntaxList<StatementSyntax> reloadStatements = SyntaxFactory.List<StatementSyntax>();
+            foreach (FieldDeclarationSyntax field in publicFields)
+            {
+                ElementAccessExpressionSyntax mapAccess = SyntaxFactory.ElementAccessExpression(
+                    SyntaxFactory.IdentifierName("ReloadMap"),
+                    SyntaxFactory.BracketedArgumentList(
+                        SyntaxFactory.SingletonSeparatedList<ArgumentSyntax>(
+                            SyntaxFactory.Argument(
+                                SyntaxFactory.LiteralExpression(
+                                    SyntaxKind.StringLiteralExpression,
+                                    SyntaxFactory.Literal(field.Declaration.Variables.First().Identifier.ValueText)
+                                )
+                            )
+                        )
+                    )
+                );
+                ExpressionSyntax assignmentExpr = SyntaxFactory.AssignmentExpression(
+                    SyntaxKind.SimpleAssignmentExpression,
+                    SyntaxFactory.IdentifierName(field.Declaration.Variables.First().Identifier),
+                    SyntaxFactory.CastExpression(SyntaxFactory.ParseTypeName(field.Declaration.Type.ToString()), mapAccess)
+                );
+
+                ExpressionSyntax tryGetValueCall = SyntaxFactory.InvocationExpression(
+                    SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.IdentifierName("ReloadMap"),
+                        SyntaxFactory.IdentifierName("TryGetValue")
+                    )
+                )
+                .WithArgumentList(
+                    SyntaxFactory.ArgumentList(
+                        SyntaxFactory.SeparatedList<ArgumentSyntax>(
+                            new SyntaxNodeOrToken[]
+                            {
+                                // First argument: key
+                                SyntaxFactory.Argument(SyntaxFactory.LiteralExpression(
+                                    SyntaxKind.StringLiteralExpression,
+                                    SyntaxFactory.Literal(field.Declaration.Variables.First().Identifier.ValueText)
+                                )),
+                                SyntaxFactory.Token(SyntaxKind.CommaToken),
+                                // Second argument: out var value
+                                SyntaxFactory.Argument(
+                                    SyntaxFactory.DeclarationExpression(
+                                        SyntaxFactory.IdentifierName(
+                                            SyntaxFactory.Identifier(
+                                                SyntaxFactory.TriviaList(),
+                                                SyntaxKind.VarKeyword,
+                                                "var",
+                                                "var",
+                                                SyntaxFactory.TriviaList()
+                                            )
+                                        ),
+                                        SyntaxFactory.SingleVariableDesignation(SyntaxFactory.Identifier("value"))
+                                    )
+                                )
+                                .WithRefOrOutKeyword(SyntaxFactory.Token(SyntaxKind.OutKeyword))
+                            }
+                        )
+                    )
+                );
+                ExpressionStatementSyntax printVarStatement = SyntaxFactory.ExpressionStatement(
+                    SyntaxFactory.InvocationExpression(
+                        SyntaxFactory.MemberAccessExpression(
+                            SyntaxKind.SimpleMemberAccessExpression,
+                            SyntaxFactory.IdentifierName("Console"),
+                            SyntaxFactory.IdentifierName("WriteLine")
+                        ),
+                        SyntaxFactory.ArgumentList(
+                            SyntaxFactory.SingletonSeparatedList<ArgumentSyntax>(
+                                SyntaxFactory.Argument(SyntaxFactory.IdentifierName(field.Declaration.Variables.First().Identifier))
+                            )
+                        )
+                    )
+                );
+                IfStatementSyntax ifStatement = SyntaxFactory.IfStatement(
+                    tryGetValueCall, // The expression block generated above
+                    SyntaxFactory.Block(
+                        SyntaxFactory.SingletonList<StatementSyntax>(
+                            SyntaxFactory.ExpressionStatement(assignmentExpr)
+                        ).Add(printVarStatement)
+                    )
+                );
+
+                
+                reloadStatements = reloadStatements.Add(ifStatement);
+            }
+            reloadStatements = reloadStatements.Add(printReloadStatement);
+
+            /* Test Print
+            Console.WriteLine("Generated ReloadState method with the following statements:");
+            foreach (StatementSyntax statement in reloadStatements)
+            {
+                Console.WriteLine(statement.ToString());
+            }
+            */
+
             MethodDeclarationSyntax reloadState = SyntaxFactory.MethodDeclaration(
                 SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)),
                 "ReloadState"
@@ -250,7 +382,7 @@ namespace ScriptHost
                     SyntaxFactory.Parameter(SyntaxFactory.Identifier("ReloadMap")).WithType(SyntaxFactory.ParseTypeName("Dictionary<string, object>"))
                 })
             ))
-            .WithBody(SyntaxFactory.Block(printReloadStatement))
+            .WithBody(SyntaxFactory.Block(reloadStatements))
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.OverrideKeyword));
 
             ClassDeclarationSyntax modifiedClass = classDec.AddMembers(new[] { saveState, reloadState });
@@ -268,7 +400,8 @@ namespace ScriptHost
                 {
                     CurrentInstances[EntityID] = (BaseEntity?)Activator.CreateInstance(type);
                     CurrentInstances[EntityID]!.ScriptInstancePtr = EntityID;
-                    SavedStates[EntityID] = new Dictionary<string, object>();
+                    CurrentInstances[EntityID]!.ReloadState(SavedStates![EntityID]);
+                    Console.WriteLine($"Reloaded state for EntityID: {CurrentInstances[EntityID]!.ScriptInstancePtr} of type {CurrentInstances[EntityID]!.GetType().Name}");
                     count += 1;
                 }
             }
@@ -281,7 +414,7 @@ namespace ScriptHost
             {
                 CurrentInstances[EntityID] = (BaseEntity?)Activator.CreateInstance(type);
                 CurrentInstances[EntityID]!.ScriptInstancePtr = EntityID;
-                SavedStates[EntityID] = new Dictionary<string, object>();
+                SavedStates![EntityID] = new Dictionary<string, object>();
                 Console.WriteLine("[C# Host] Instantiated script: " + scriptName + " with EntityID: " + EntityID);
             }
         }
@@ -291,6 +424,7 @@ namespace ScriptHost
             if (CurrentInstances != null && CurrentInstances.TryGetValue(EntityID, out BaseEntity? script))
             {
                 CurrentInstances.Remove(EntityID);
+                SavedStates!.Remove(EntityID);
             }
         }
     }

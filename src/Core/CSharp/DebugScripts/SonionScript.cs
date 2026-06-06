@@ -1,16 +1,14 @@
-﻿using SharedInterface;
+﻿using VortexArcana;
 using System;
 
-public class SonionScript : IScriptBehavior
+public class SonionScript : BaseEntity
 {
-    public IntPtr ScriptInstancePtr { get; set; }
-
-    public void Update()
+    public override void Update()
     {
         Console.WriteLine("SonionScript Update has run successfully. Ptr is " + ScriptInstancePtr);
     }
 
-    public void Decimate()
+    public override void Decimate()
     {
         Console.WriteLine("SonionScript Decimate has run successfully. Yipee.");
     }

@@ -1,16 +1,14 @@
-using SharedInterface;
+using VortexArcana;
 using System;
 
-public class DihScript : IScriptBehavior
+public class DihScript : BaseEntity
 {
-    public IntPtr ScriptInstancePtr { get; set; }
-
-    public void Update()
+    public override void Update()
     {
         Console.WriteLine("DihScript Update has run successfully. Ptr is " + ScriptInstancePtr);
     }
 
-    public void Decimate()
+    public override void Decimate()
     {
         Console.WriteLine("DihScript Decimate has run successfully. Yipee.");
     }

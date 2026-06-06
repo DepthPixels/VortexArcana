@@ -99,7 +99,7 @@ add_custom_command(TARGET VortexArcana POST_BUILD
 
 add_custom_target(ScriptHandler ALL
     COMMAND dotnet build "${CMAKE_CURRENT_SOURCE_DIR}/src/Core/CSharp/ScriptHandler.csproj" --configuration $<CONFIG> --output "${CMAKE_CURRENT_BINARY_DIR}/csharp_out"
-    COMMENT "Compiling C# Script Engine natively via .NET 10 CLI..."
+    COMMENT "Compiling C# Script Handler natively via .NET 10 CLI..."
 )
 
 add_dependencies(VortexArcana ScriptHandler)

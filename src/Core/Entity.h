@@ -4,6 +4,7 @@
 #include "Core/Utility/Math.h"
 #include <vector>
 #include <string>
+#include <random>
 #include <SDL3/SDL.h>
 
 namespace Vortex {
@@ -15,6 +16,11 @@ namespace Vortex {
 		bool isSelected = false;
 		bool isBeingDragged = false;
 		std::string name = "Default";
+
+		// Constructor
+		Entity() {
+			entityID = (int)this;
+		}
 
 		// Component helpers.
 		void AddComponent(Component* component);
@@ -48,9 +54,16 @@ namespace Vortex {
 		void UpdateComponents(float deltaTime);
 		void RenderComponents();
 
+		// Getters
+		int& EntityID() { 
+			return entityID;
+		}
+
 		~Entity();
 	private:
 		// Components.
 		std::vector<Component*> components;
+
+		int entityID;
 	};
 }

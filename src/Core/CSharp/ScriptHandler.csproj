@@ -7,4 +7,11 @@
     <!-- Keeps the output layout clean for CMake mapping -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
+  <ItemGroup>
+	<Compile Remove="DebugScripts\**" />
+	<None Include="DebugScripts\**">
+		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	</None>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="5.3.0" />
+  </ItemGroup>
 </Project>

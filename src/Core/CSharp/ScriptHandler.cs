@@ -1,10 +1,14 @@
 ﻿using System;
+using ScriptHost;
 using System.Runtime.InteropServices;
+using SharedInterface;
 
 namespace ScriptEngine
 {
     public class ScriptHandler
     {
+        private static ScriptHotReloadEngine? _engine;
+
         // Struct to safely pass initialization configuration from C++
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
         public struct HostConfig
@@ -19,7 +23,9 @@ namespace ScriptEngine
 
             // Marshal configuration out of native memory
             HostConfig config = Marshal.PtrToStructure<HostConfig>(arg);
-            Console.WriteLine($"[C# Handler] Script Engine initialized. Watching: {config.ScriptDirectory}");
+            Console.WriteLine($"[C# Handler] Script Engine initialized. Initializing Engine for: {config.ScriptDirectory}");
+
+            _engine = new ScriptHotReloadEngine(config.ScriptDirectory);
 
             return 0; // Success
         }
@@ -27,10 +33,27 @@ namespace ScriptEngine
         [UnmanagedCallersOnly(EntryPoint = "RunScript")]
         public static int RunScript(IntPtr arg, int argLength)
         {
-            string scriptPath = Marshal.PtrToStringUni(arg);
-            Console.WriteLine($"[C# Handler] Compiling and running script: {scriptPath}");
+            if (argLength < Marshal.SizeOf<HostConfig>()) return -1;
 
-            // Integrate scripting APIs like Microsoft.CodeAnalysis.CSharp.Scripting here
+            // Marshal configuration out of native memory
+            HostConfig config = Marshal.PtrToStructure<HostConfig>(arg);
+            Console.WriteLine($"[C# Handler] Running Update() on script: {config.ScriptDirectory}");
+
+            // Testing
+
+            return 100; // Return execution status code back to C++
+        }
+
+        [UnmanagedCallersOnly(EntryPoint = "RunUpdate")]
+        public static int RunUpdate()
+        {
+            Console.WriteLine($"[C# Handler] Running Update() on all scripts");
+
+            // Update all script behaviors
+            foreach (IScriptBehavior? script in _engine?.CurrentInstances ?? Enumerable.Empty<IScriptBehavior?>())
+            {
+                script?.Update();
+            }
 
             return 100; // Return execution status code back to C++
         }

@@ -119,13 +119,22 @@ namespace
             nullptr, (void**)&run_script);
         assert(rc == 0 && run_script != nullptr && "Failure: get_function_pointer()");
 
+        // Function pointer to ScriptHandler.RunUpdate
+        typedef int (CORECLR_DELEGATE_CALLTYPE* run_update_fn)();
+        run_update_fn run_update;
+        rc = load_assembly_and_get_function_pointer(
+            dllPath.c_str(),
+            STR("ScriptEngine.ScriptHandler, ScriptHandler"),
+            STR("RunUpdate"),
+            UNMANAGEDCALLERSONLY_METHOD,
+            nullptr, (void**)&run_update);
+        assert(rc == 0 && run_update != nullptr && "Failure: get_function_pointer()");
+
         // Execution
-		string_t scriptDir = root_path + STR("DebugScript\\");
+		string_t scriptDir = root_path + STR("DebugScripts\\");
         HostConfig config{ scriptDir.c_str() };
 		initialize_handler(&config, sizeof(config));
-
-        const string_t targetScript = STR("DihScript.cs");
-		int scriptResult = run_script((void*)targetScript.c_str(), (targetScript.length() + 1) * sizeof(char_t));
+		int scriptResult = run_update();
 
         close_fptr(cxt);
         return EXIT_SUCCESS;

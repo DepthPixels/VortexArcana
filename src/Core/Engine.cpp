@@ -332,9 +332,11 @@ void Engine::ShowEditorUI() {
 	if (ImGui::Button("Load Default Scene")) Vortex::SceneUtility::LoadScene(this->m_entities, "assets/scenes/Default Scene.scene");
 	ImGui::EndDisabled();
 	for (Vortex::Entity* entity : m_entities) {
+		ImGui::PushID(entity->EntityID());
 		if (ImGui::Button(("- %s", entity->name.c_str()))) {
 			m_selectedEntity = entity;
 		}
+		ImGui::PopID();
 	}
 	if (ImGui::Button("Add Entity")) {
 		Vortex::Entity* newEntity = new Vortex::Entity();

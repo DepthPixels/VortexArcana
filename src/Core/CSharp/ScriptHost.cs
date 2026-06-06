@@ -32,7 +32,12 @@ namespace ScriptHost
     {
         private readonly string _projectPath;
         private CollectibleAssemblyContext? _loadContext;
-        public List<IScriptBehavior?>? CurrentInstances { get; private set; } = new List<IScriptBehavior?>();
+        private Dictionary<string, Type> _scriptTypes = new Dictionary<string, Type>();
+        public Dictionary<IntPtr, IScriptBehavior?>? CurrentInstances = new Dictionary<IntPtr, IScriptBehavior?>();
+
+        FileSystemWatcher watcher;
+        private static Timer _debounceTimer;
+        private static readonly TimeSpan DebounceDelay = TimeSpan.FromMilliseconds(500);
 
         public ScriptHotReloadEngine(string projectPath)
         {
@@ -43,7 +48,7 @@ namespace ScriptHost
 
         private void SetupFileWatcher()
         {
-            var watcher = new FileSystemWatcher(Path.GetDirectoryName(_projectPath)!)
+            watcher = new FileSystemWatcher(_projectPath)
             {
                 Filter = "*.cs",
                 EnableRaisingEvents = true,
@@ -52,9 +57,32 @@ namespace ScriptHost
 
             watcher.Changed += (s, e) =>
             {
+                _debounceTimer?.Dispose();
+                _debounceTimer = new Timer(TimerCallback, e.FullPath, DebounceDelay, Timeout.InfiniteTimeSpan);
+            };
+        }
+
+        private void TimerCallback(object state)
+        {
+            string filepath = (string)state;
+
+            if (IsFileReady(filepath))
+            {
                 Console.WriteLine("Change detected! Hot reloading...");
                 Reload();
-            };
+            }
+        }
+        private static bool IsFileReady(string filename)
+        {
+            try
+            {
+                using var inputStream = File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.None);
+                return inputStream.Length > 0;
+            }
+            catch (IOException)
+            {
+                return false; // File is still locked by the OS / writing process
+            }
         }
 
         public void Reload()
@@ -101,8 +129,16 @@ namespace ScriptHost
                 peStream.Seek(0, SeekOrigin.Begin);
 
                 // Free memory
+                Dictionary<IntPtr, string> oldInstances = new Dictionary<IntPtr, string>();
                 if (_loadContext != null)
                 {
+                    foreach (IScriptBehavior? script in CurrentInstances?.Values ?? Enumerable.Empty<IScriptBehavior?>())
+                    {
+                        if (script != null)
+                        {
+                            oldInstances[script.ScriptInstancePtr] = script.GetType().Name;
+                        }
+                    }
                     CurrentInstances = null;
                     _loadContext.Unload();
                     GC.Collect();
@@ -113,23 +149,55 @@ namespace ScriptHost
                 _loadContext = new CollectibleAssemblyContext();
                 Assembly assembly = _loadContext.LoadFromStream(peStream);
 
-                CurrentInstances = new List<IScriptBehavior?>();
+                _scriptTypes.Clear();
                 // Look for usage of IScriptBehavior
-                int count = 0;
                 var scriptBehaviors = assembly.GetTypes().Where(t => typeof(IScriptBehavior).IsAssignableFrom(t));
                 foreach (var type in scriptBehaviors)
                 {
                     if (type != null)
                     {
-                        CurrentInstances.Add((IScriptBehavior?)Activator.CreateInstance(type));
-                        count += 1;
+                        _scriptTypes[type.Name] = type;
                     }
                 }
-                Console.WriteLine($"Hot Reload successful! Reloaded {count} script instances.");
+                ReinitializeInstances(oldInstances);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error during hot reload: {ex.Message}");
+            }
+        }
+
+        public void ReinitializeInstances(Dictionary<IntPtr, string> oldInstances)
+        {
+            CurrentInstances = new Dictionary<IntPtr, IScriptBehavior?>();
+            int count = 0;
+            foreach ((IntPtr EntityID, string typename) in oldInstances)
+            {
+                if (_scriptTypes.TryGetValue(typename, out Type? type))
+                {
+                    CurrentInstances[EntityID] = (IScriptBehavior?)Activator.CreateInstance(type);
+                    CurrentInstances[EntityID]!.ScriptInstancePtr = EntityID;
+                    count += 1;
+                }
+            }
+            Console.WriteLine($"Hot Reload successful! Reloaded {count} script instances.");
+        }
+
+        public void InstantiateScript(IntPtr EntityID, string scriptName)
+        {
+            if (CurrentInstances != null && _scriptTypes.TryGetValue(scriptName, out Type? type))
+            {
+                CurrentInstances[EntityID] = (IScriptBehavior?)Activator.CreateInstance(type);
+                CurrentInstances[EntityID]!.ScriptInstancePtr = EntityID;
+                Console.WriteLine("[C# Host] Instantiated script: " + scriptName + " with EntityID: " + EntityID);
+            }
+        }
+
+        public void DecimateScript(IntPtr EntityID)
+        {
+            if (CurrentInstances != null && CurrentInstances.TryGetValue(EntityID, out IScriptBehavior? script))
+            {
+                CurrentInstances.Remove(EntityID);
             }
         }
     }

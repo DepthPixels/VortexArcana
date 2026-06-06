@@ -44,25 +44,47 @@ using string_t = std::basic_string<char_t>;
 struct HostConfig {
     const char_t* ScriptDirectory;
 };
+struct InstantiateConfig {
+	int* EntityID;
+    const char_t* ScriptName;
+};
 
-namespace
-{
+namespace {
     // Globals to hold hostfxr exports
     hostfxr_initialize_for_dotnet_command_line_fn init_for_cmd_line_fptr;
     hostfxr_initialize_for_runtime_config_fn init_for_config_fptr;
     hostfxr_get_runtime_delegate_fn get_delegate_fptr;
     hostfxr_close_fn close_fptr;
+    load_assembly_and_get_function_pointer_fn load_assembly_and_get_function_pointer;
+
+    // HostFXR Context
+    hostfxr_handle cxt;
+
+    // Bridge Functions
+    typedef int (CORECLR_DELEGATE_CALLTYPE* initialize_handler_fn)(HostConfig* args, int sizeBytes);
+    initialize_handler_fn initialize_handler;
+
+    typedef int (CORECLR_DELEGATE_CALLTYPE* run_script_fn)(HostConfig* args, int sizeBytes);
+    run_script_fn run_script;
+
+    typedef int (CORECLR_DELEGATE_CALLTYPE* run_update_fn)();
+    run_update_fn run_update;
+
+    typedef int (CORECLR_DELEGATE_CALLTYPE* instantiate_script_fn)(InstantiateConfig* args, int sizeBytes);
+    instantiate_script_fn instantiate_script;
 
     // Forward declarations
     bool load_hostfxr(const char_t* app);
     load_assembly_and_get_function_pointer_fn get_dotnet_load_assembly(const char_t* assembly);
 
-    int run_app_example(const string_t& root_path);
+    int init_bridge(const string_t& root_path);
+	void update_all_scripts_through_bridge();
+	void instantiate_script_through_bridge(int* entityID, const string_t& scriptName);
+	void exit_bridge();
 }
 
-namespace
-{
-    int run_app_example(const string_t& root_path)
+namespace {
+    int init_bridge(const string_t& root_path)
     {
         const string_t app_path = root_path + STR("ScriptHandler.runtimeconfig.json");
 
@@ -73,8 +95,7 @@ namespace
         }
 
         // Load .NET Core
-        hostfxr_handle cxt = nullptr;
-		int rc = init_for_config_fptr(app_path.c_str(), nullptr, &cxt);
+        int rc = init_for_config_fptr(app_path.c_str(), nullptr, &cxt);
         if (rc != 0 || cxt == nullptr)
         {
             std::cerr << "Init failed: " << std::hex << std::showbase << rc << std::endl;
@@ -83,7 +104,7 @@ namespace
         }
 
         // Get the function pointer to get function pointers
-		load_assembly_and_get_function_pointer_fn load_assembly_and_get_function_pointer = nullptr;
+        load_assembly_and_get_function_pointer_fn load_assembly_and_get_function_pointer = nullptr;
         rc = get_delegate_fptr(
             cxt,
             hdt_load_assembly_and_get_function_pointer,
@@ -95,11 +116,9 @@ namespace
             return EXIT_FAILURE;
         }
 
-		const string_t dllPath = root_path + STR("ScriptHandler.dll");
+        const string_t dllPath = root_path + STR("ScriptHandler.dll");
 
         // Function pointer to ScriptHandler.InitializeHandler
-        typedef int (CORECLR_DELEGATE_CALLTYPE* initialize_handler_fn)(void* args, int sizeBytes);
-        initialize_handler_fn initialize_handler;
         rc = load_assembly_and_get_function_pointer(
             dllPath.c_str(),
             STR("ScriptEngine.ScriptHandler, ScriptHandler"),
@@ -109,8 +128,6 @@ namespace
         assert(rc == 0 && initialize_handler != nullptr && "Failure: get_function_pointer()");
 
         // Function pointer to ScriptHandler.RunScript
-        typedef int (CORECLR_DELEGATE_CALLTYPE* run_script_fn)(void* args, int sizeBytes);
-        run_script_fn run_script;
         rc = load_assembly_and_get_function_pointer(
             dllPath.c_str(),
             STR("ScriptEngine.ScriptHandler, ScriptHandler"),
@@ -120,8 +137,6 @@ namespace
         assert(rc == 0 && run_script != nullptr && "Failure: get_function_pointer()");
 
         // Function pointer to ScriptHandler.RunUpdate
-        typedef int (CORECLR_DELEGATE_CALLTYPE* run_update_fn)();
-        run_update_fn run_update;
         rc = load_assembly_and_get_function_pointer(
             dllPath.c_str(),
             STR("ScriptEngine.ScriptHandler, ScriptHandler"),
@@ -130,21 +145,43 @@ namespace
             nullptr, (void**)&run_update);
         assert(rc == 0 && run_update != nullptr && "Failure: get_function_pointer()");
 
-        // Execution
-		string_t scriptDir = root_path + STR("DebugScripts\\");
-        HostConfig config{ scriptDir.c_str() };
-		initialize_handler(&config, sizeof(config));
-		int scriptResult = run_update();
+        // Function pointer to ScriptHandler.InstantiateScript
+        rc = load_assembly_and_get_function_pointer(
+            dllPath.c_str(),
+            STR("ScriptEngine.ScriptHandler, ScriptHandler"),
+            STR("InstantiateScript"),
+            UNMANAGEDCALLERSONLY_METHOD,
+            nullptr, (void**)&instantiate_script);
+        assert(rc == 0 && instantiate_script != nullptr && "Failure: get_function_pointer()");
 
-        close_fptr(cxt);
+        // Execution
+        string_t scriptDir = root_path + STR("DebugScripts\\");
+        HostConfig config{ scriptDir.c_str() };
+        initialize_handler(&config, sizeof(config));
+
         return EXIT_SUCCESS;
+    }
+
+    void update_all_scripts_through_bridge()
+    {
+        run_update();
+    }
+
+    void instantiate_script_through_bridge(int* entityID, const string_t& scriptName)
+    {
+        InstantiateConfig config{ entityID, scriptName.c_str() };
+        instantiate_script(&config, sizeof(config));
+    }
+
+    void exit_bridge()
+    {
+        // Any necessary cleanup can be performed here.
+        close_fptr(cxt);
     }
 }
 
-
 // Loading .NET Core and activating it.
-namespace
-{
+namespace {
     // Forward declarations
     void* load_library(const char_t*);
     void* get_export(void*, const char*);

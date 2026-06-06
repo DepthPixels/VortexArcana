@@ -16,6 +16,13 @@ namespace ScriptEngine
             public string ScriptDirectory;
         }
 
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct InstantiateConfig
+        {
+            public IntPtr EntityID;
+            public string ScriptName;
+        }
+
         [UnmanagedCallersOnly(EntryPoint = "InitializeHandler")]
         public static int InitializeHandler(IntPtr arg, int argLength)
         {
@@ -50,10 +57,25 @@ namespace ScriptEngine
             Console.WriteLine($"[C# Handler] Running Update() on all scripts");
 
             // Update all script behaviors
-            foreach (IScriptBehavior? script in _engine?.CurrentInstances ?? Enumerable.Empty<IScriptBehavior?>())
+            foreach (IScriptBehavior? script in _engine?.CurrentInstances?.Values ?? Enumerable.Empty<IScriptBehavior?>())
             {
                 script?.Update();
             }
+
+            return 100; // Return execution status code back to C++
+        }
+
+        [UnmanagedCallersOnly(EntryPoint = "InstantiateScript")]
+        public static int InstantiateScript(IntPtr arg, int argLength)
+        {
+            if (argLength < Marshal.SizeOf<InstantiateConfig>()) return -1;
+
+            // Marshal configuration out of native memory
+            InstantiateConfig config = Marshal.PtrToStructure<InstantiateConfig>(arg);
+
+            Console.WriteLine($"[C# Handler] Instantiating script: {Path.GetFileNameWithoutExtension(config.ScriptName)}");
+
+            _engine?.InstantiateScript(config.EntityID, Path.GetFileNameWithoutExtension(config.ScriptName));
 
             return 100; // Return execution status code back to C++
         }

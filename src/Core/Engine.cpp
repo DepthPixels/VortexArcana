@@ -49,14 +49,8 @@ bool Engine::Initialize() {
 	glEnable(GL_STENCIL_TEST);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	// Texture Stuff
-	/*
-	m_basicShader = new Shader("assets/shaders/basicVertex.glsl", "assets/shaders/basicFragment.glsl");
-
-	m_basicShader->use();
-	glm::mat4 projection = glm::ortho(0.0f, m_viewportSize.x, m_viewportSize.y, 0.0f, -1.0f, 1.0f);
-	m_basicShader->setMat4("projection", projection);
-	*/
+	// Initialize Bridge to .NET for Scripting.
+	init_bridge(STR("F:\\Cpp\\VortexArcana\\out\\build\\windows-vs2026\\Debug\\"));
 
 	Vortex::Entity* object1 = new Vortex::Entity();
 	object1->name = "Yehya Freshman Sprite";
@@ -319,8 +313,8 @@ void Engine::ShowEditorUI() {
 	if (ImGui::Button("Reset Tile Location")) {
 		m_selectedTileLocation = "None";
 	}
-	if (ImGui::Button("Send Host Event")) {
-		run_app_example(STR("F:\\Cpp\\VortexArcana\\out\\build\\windows-vs2026\\Debug\\"));
+	if (ImGui::Button("Update All Scripts")) {
+		update_all_scripts_through_bridge();
 	}
 	ImGui::End();
 
@@ -385,7 +379,7 @@ void Engine::ShowEditorUI() {
 				}
 			}
 		}
-		
+
 		if (ImGui::Button("Add Component")) {
 			ImGui::OpenPopup("AddComponentPopup");
 		}
@@ -400,6 +394,37 @@ void Engine::ShowEditorUI() {
 				Vortex::Physics2D* physicsComponent = new Vortex::Physics2D();
 				m_selectedEntity->AddComponent(physicsComponent);
 				std::cout << "Added Physics2D Component to " << m_selectedEntity->name << std::endl;
+			}
+			ImGui::EndPopup();
+		}
+
+
+		ImGui::Text("Scripts");
+		for (const auto& script : m_selectedEntity->scriptsAttached) {
+			ImGui::Text("- %s", script.c_str());
+		}
+
+		if (ImGui::Button("Add Script")) {
+			ImGui::OpenPopup("AddScriptPopup");
+		}
+
+		if (ImGui::BeginPopup("AddScriptPopup")) {
+			for (const auto& entry : std::filesystem::recursive_directory_iterator("DebugScripts/")) {
+				if (entry.is_regular_file()) {
+					if (entry.path().string().ends_with(".cs")) {
+						if (ImGui::Selectable(entry.path().filename().string().c_str())) {
+							// Script was selected
+							if (m_selectedEntity->scriptsAttached.count(entry.path().filename().string())) {
+								std::cout << "Script: " << entry.path().filename().string() << " is already attached to " << m_selectedEntity->name << std::endl;
+							}
+							else {
+								m_selectedEntity->scriptsAttached.insert(entry.path().filename().string());
+								instantiate_script_through_bridge(m_selectedEntity->EntityID(), entry.path().filename());
+								std::cout << "Added Script: " << entry.path().filename().string() << " to " << m_selectedEntity->name << std::endl;
+							}
+						}
+					}
+				}
 			}
 			ImGui::EndPopup();
 		}
@@ -429,6 +454,9 @@ void Engine::Shutdown() {
 	glDeleteVertexArrays(1, &m_vao);
 	glDeleteBuffers(1, &m_vbo);
 	glDeleteProgram(m_shaderProgram);
+
+	// Close Bridge
+	exit_bridge();
 
 	SDL_GL_DestroyContext(m_glContext);
 

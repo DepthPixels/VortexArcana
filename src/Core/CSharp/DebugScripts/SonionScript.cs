@@ -3,7 +3,7 @@ using System;
 
 public class SonionScript : IScriptBehavior
 {
-    public IntPtr ScriptInstancePtr;
+    public IntPtr ScriptInstancePtr { get; set; }
 
     public void Update()
     {

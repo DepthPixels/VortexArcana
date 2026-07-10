@@ -71,6 +71,20 @@ namespace ScriptEngine
             return 100; // Return execution status code back to C++
         }
 
+        [UnmanagedCallersOnly(EntryPoint = "RunPhysUpdate")]
+        public static int RunPhysUpdate(float deltaTime)
+        {
+            Console.WriteLine($"[C# Handler] Running Phys Update() on all scripts");
+
+            // Update all script behaviors
+            foreach (BaseEntity? script in _engine?.CurrentInstances?.Values ?? Enumerable.Empty<BaseEntity?>())
+            {
+                script?.PhysUpdate(deltaTime);
+            }
+
+            return 100; // Return execution status code back to C++
+        }
+
         [UnmanagedCallersOnly(EntryPoint = "InstantiateScript")]
         public static int InstantiateScript(IntPtr arg, int argLength)
         {

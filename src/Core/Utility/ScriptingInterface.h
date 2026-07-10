@@ -50,6 +50,9 @@ struct InstantiateConfig {
 	int* EntityID;
     const char_t* ScriptName;
 };
+struct PhysUpdateConfig {
+	float deltaTime;
+};
 
 namespace {
     // Globals to hold hostfxr exports
@@ -71,6 +74,9 @@ namespace {
 
     typedef int (CORECLR_DELEGATE_CALLTYPE* run_update_fn)();
     run_update_fn run_update;
+
+	typedef int (CORECLR_DELEGATE_CALLTYPE* run_phys_update_fn)(PhysUpdateConfig* args, int sizeBytes);
+	run_phys_update_fn run_phys_update;
 
     typedef int (CORECLR_DELEGATE_CALLTYPE* instantiate_script_fn)(InstantiateConfig* args, int sizeBytes);
     instantiate_script_fn instantiate_script;
@@ -147,6 +153,15 @@ namespace {
             nullptr, (void**)&run_update);
         assert(rc == 0 && run_update != nullptr && "Failure: get_function_pointer()");
 
+        // Function pointer to ScriptHandler.RunPhysUpdate
+        rc = load_assembly_and_get_function_pointer(
+            dllPath.c_str(),
+            STR("ScriptEngine.ScriptHandler, ScriptHandler"),
+            STR("RunPhysUpdate"),
+            UNMANAGEDCALLERSONLY_METHOD,
+            nullptr, (void**)&run_phys_update);
+        assert(rc == 0 && run_phys_update != nullptr && "Failure: get_function_pointer()");
+
         // Function pointer to ScriptHandler.InstantiateScript
         rc = load_assembly_and_get_function_pointer(
             dllPath.c_str(),
@@ -167,6 +182,12 @@ namespace {
     void update_all_scripts_through_bridge()
     {
         run_update();
+    }
+
+    void phys_update_all_scripts_through_bridge(float deltaTime)
+    {
+		PhysUpdateConfig config{ deltaTime }; // Convert to milliseconds
+        run_phys_update(&config, sizeof(config));
     }
 
     void instantiate_script_through_bridge(int* entityID, const string_t& scriptName)

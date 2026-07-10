@@ -19,6 +19,7 @@ namespace VortexArcana {
         // Abstract Functions
         public abstract void Awake();
         public abstract void Update();
+        public abstract void PhysUpdate(float deltaTime);
         public abstract void Decimate();
         public abstract void SaveState(Dictionary<string, object> SaveMap);
         public abstract void ReloadState(Dictionary<string, object> ReloadMap);

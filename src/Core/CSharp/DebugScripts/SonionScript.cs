@@ -13,6 +13,11 @@ public class SonionScript : BaseEntity
         Console.WriteLine("SonionScript Update has run successfully. Ptr is " + _entityID);
     }
 
+    public override void PhysUpdate(float deltaTime)
+    {
+        Console.WriteLine("SonionScript PhysUpdate has run successfully. Ptr is " + _entityID);
+    }
+
     public override void Decimate()
     {
         Console.WriteLine("SonionScript Decimate has run successfully. Yipee.");

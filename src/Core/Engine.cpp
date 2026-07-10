@@ -201,7 +201,10 @@ void Engine::ProcessInput() {
 void Engine::Update(float deltaTime) {
 	// Physics stuff.
 	Vortex::Vec2 gravityForce = m_gravityDirection * m_gravityStrength * m_meterToPixel;
-	
+
+	update_all_scripts_through_bridge();
+	phys_update_all_scripts_through_bridge(deltaTime);
+
 	for (Vortex::Entity* entity : m_entities) {
 		Vortex::Physics2D* physics2D = entity->GetComponent<Vortex::Physics2D>();
 		if (physics2D) {

@@ -5,18 +5,23 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <iostream>
 #include <SDL3/SDL.h>
 
 namespace Vortex {
 	class Entity {
 	public:
-		Vortex::Vec2 velocity;
 		Vortex::Rect bounds = {0.0f, 0.0f, 128.0f, 128.0f};
 		float rotation = 0.0f;
 		bool isSelected = false;
 		bool isBeingDragged = false;
 		std::string name = "Default";
 		std::set<std::string> scriptsAttached;
+
+		// Components.
+		std::vector<Component*> components;
+		// Entity ID (this pointer)
+		int* entityID;
 
 		// Constructor
 		Entity() {
@@ -25,6 +30,7 @@ namespace Vortex {
 
 		// Component helpers.
 		void AddComponent(Component* component);
+
 		std::vector<Component*> GetAllComponents() {
 			return components;
 		}
@@ -42,14 +48,14 @@ namespace Vortex {
 
 		template <typename T>
 		std::vector<T*> GetComponents() {
+			std::vector<T*> foundComponents;
 			for (Component* component : components) {
-				std::vector<T*> foundComponents;
 				T* casted = dynamic_cast<T*>(component);
 				if (casted != nullptr) {
 					foundComponents.push_back(casted);
 				}
-				return foundComponents;
 			}
+			return foundComponents;
 		}
 
 		void UpdateComponents(float deltaTime);
@@ -61,10 +67,5 @@ namespace Vortex {
 		}
 
 		~Entity();
-	private:
-		// Components.
-		std::vector<Component*> components;
-
-		int* entityID;
 	};
 }

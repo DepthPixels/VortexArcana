@@ -59,6 +59,7 @@ bool Engine::Initialize() {
 	spriteComponent->LoadSprite("assets/yehyafreshman.png", true);
 	object1->AddComponent(spriteComponent);
 	Vortex::Physics2D* physics2D = new Vortex::Physics2D();
+	std::cout << "Physics2D init at: " << physics2D << std::endl;
 	physics2D->Mass() = 1000.0f;
 	object1->AddComponent(physics2D);
 	m_entities.push_back(object1);

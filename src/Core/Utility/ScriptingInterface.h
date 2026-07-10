@@ -9,6 +9,7 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <cstddef>
 
 #include <nethost.h>
 #include <coreclr_delegates.h>
@@ -43,6 +44,7 @@ using string_t = std::basic_string<char_t>;
 
 struct HostConfig {
     const char_t* ScriptDirectory;
+    int physics2DOffset;
 };
 struct InstantiateConfig {
 	int* EntityID;
@@ -156,7 +158,7 @@ namespace {
 
         // Execution
         string_t scriptDir = root_path + STR("DebugScripts\\");
-        HostConfig config{ scriptDir.c_str() };
+        HostConfig config{ scriptDir.c_str(), offsetof(Vortex::Physics2D, velocity) };
         initialize_handler(&config, sizeof(config));
 
         return EXIT_SUCCESS;
@@ -177,6 +179,109 @@ namespace {
     {
         // Any necessary cleanup can be performed here.
         close_fptr(cxt);
+    }
+
+    // --------------------------------------------------
+    // Component Stuff
+    // --------------------------------------------------
+    
+    // Entity
+    
+    // GetComponent<T>() Wrappers
+    typedef void* (*ComponentGetter)(int* entityID);
+
+	void* GetSpriteRenderer2DWrapper(int* entityID) {
+		Vortex::Entity* entity = reinterpret_cast<Vortex::Entity*>(entityID);
+		return entity->GetComponent<Vortex::SpriteRenderer2D>();
+	}
+    
+	void* GetPhysics2DWrapper(int* entityID) {
+		Vortex::Entity* entity = reinterpret_cast<Vortex::Entity*>(entityID);
+		return entity->GetComponent<Vortex::Physics2D>();
+	}
+
+    // Registry
+    std::map<int, ComponentGetter> getComponentRegistry = {  // Maps component IDs to their corresponding wrappers.
+        {1, GetSpriteRenderer2DWrapper},
+        {2, GetPhysics2DWrapper}
+    };
+
+	// GetComponent<T>() Bridge Function
+    extern "C" __declspec(dllexport) inline void* Entity_GetComponentBridge(int* entityID, int componentID) {
+		if (getComponentRegistry.find(componentID) != getComponentRegistry.end()) {
+			std::cout << "Physics2D found at: " << getComponentRegistry[componentID](entityID) << std::endl;
+			std::cout << "Location of Velocity: " << &(reinterpret_cast<Vortex::Physics2D*>(getComponentRegistry[componentID](entityID))->Velocity()) << std::endl;
+			return getComponentRegistry[componentID](entityID);
+		}
+        return nullptr;
+    }
+
+	// GetComponents<T>() Wrappers
+    typedef std::vector<void*>* (*ComponentsGetter)(int* entityID);
+    
+    std::vector<void*>* GetAllSpriteRenderer2DWrapper(int* entityID) {
+        Vortex::Entity* entity = reinterpret_cast<Vortex::Entity*>(entityID);
+        std::vector<Vortex::SpriteRenderer2D*> components = entity->GetComponents<Vortex::SpriteRenderer2D>();
+        if (components.size() == 0) {
+            return nullptr;
+        }
+        else {
+            std::vector<void*> return_vector;
+            return_vector.reserve(components.size());
+
+			std::transform(components.begin(), components.end(), std::back_inserter(return_vector),
+				[](Vortex::SpriteRenderer2D* comp) { return static_cast<void*>(comp); });
+
+            return &return_vector;
+        }
+    }
+
+    std::vector<void*>* GetAllPhysics2DWrapper(int* entityID) {
+        Vortex::Entity* entity = reinterpret_cast<Vortex::Entity*>(entityID);
+        std::vector<Vortex::Physics2D*> components = entity->GetComponents<Vortex::Physics2D>();
+
+        std::vector<void*> return_vector;
+        return_vector.reserve(components.size());
+
+        std::transform(components.begin(), components.end(), std::back_inserter(return_vector),
+            [](Vortex::Physics2D* comp) { return static_cast<void*>(comp); });
+
+        return &return_vector;
+    }
+
+    std::map<int, ComponentsGetter> getComponentsRegistry = {  // Maps component IDs to their corresponding wrappers.
+        {1, GetAllSpriteRenderer2DWrapper},
+        {2, GetAllPhysics2DWrapper}
+    };
+
+    extern "C" __declspec(dllexport) inline void* Entity_GetComponentsBridge(int* entityID, int componentID, int* length) {
+        if (getComponentRegistry.find(componentID) != getComponentRegistry.end()) {
+
+            std::vector<void*>* components = getComponentsRegistry[componentID](entityID);
+
+            *length = components->size();
+
+			return components->data();
+        }
+        return nullptr;
+    }
+
+    // SpriteRenderer2D
+
+    extern "C" __declspec(dllexport) inline void SpriteRenderer2D_LoadSpriteBridge(int* componentPtr, const char* location, bool alpha) {
+        if (componentPtr == nullptr) return;
+
+		Vortex::SpriteRenderer2D* component = reinterpret_cast<Vortex::SpriteRenderer2D*>(componentPtr);
+		component->LoadSprite(location, alpha);
+    }
+
+    // Physics2D
+
+    extern "C" __declspec(dllexport) inline void Physics2D_UpdateBridge(int* componentPtr, float deltaTime) {
+        if (componentPtr == nullptr) return;
+
+		Vortex::Physics2D* component = reinterpret_cast<Vortex::Physics2D*>(componentPtr);
+		component->Update(deltaTime);
     }
 }
 

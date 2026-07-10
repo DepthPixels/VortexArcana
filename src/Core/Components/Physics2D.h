@@ -9,6 +9,12 @@
 namespace Vortex {
 	class Physics2D : public Component {
 	public:
+		Vec2 velocity = { 0.0f, 0.0f };
+		Vec2 acceleration = { 0.0f, 0.0f };
+		Vec2 forceAccumulator = { 0.0f, 0.0f };
+		float mass = 1.0f;
+		bool defaultPhysics = true;
+
 		Physics2D();
 		~Physics2D();
 
@@ -45,11 +51,7 @@ namespace Vortex {
 			(customPhysicsFunction == nullptr) ? defaultPhysics = true : defaultPhysics = false;
 		}
 
-		/// <summary>
 		/// Set whether to use the default physics integration or a custom function. If no custom function has been set, this will return -1 and not change the default physics state.
-		/// </summary>
-		/// <param name="useDefault"></param>
-		/// <returns> 0 on success and -1 on fail.</returns>
 		int setDefaultPhysics(bool useDefault) {
 			if (useDefault && customPhysicsFunction == nullptr) {
 				return -1;
@@ -57,17 +59,9 @@ namespace Vortex {
 			defaultPhysics = useDefault;
 			return 0;
 		}
-
 	private:
-		Vec2 velocity = { 0.0f, 0.0f };
-		Vec2 acceleration = { 0.0f, 0.0f };
-		Vec2 forceAccumulator = { 0.0f, 0.0f };
-
 		void Integrate(float deltaTime);
 
-		float mass = 1.0f;
-
-		bool defaultPhysics = true;
 		std::function <void(Physics2D*, float)> customPhysicsFunction = nullptr;
 	};
 }

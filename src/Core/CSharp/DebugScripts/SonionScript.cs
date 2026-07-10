@@ -3,9 +3,14 @@ using System;
 
 public class SonionScript : BaseEntity
 {
+    public override void Awake()
+    {
+        Console.WriteLine("SonionScript Awake has run successfully. Ptr is " + _entityID);
+    }
+
     public override void Update()
     {
-        Console.WriteLine("SonionScript Update has run successfully. Ptr is " + ScriptInstancePtr);
+        Console.WriteLine("SonionScript Update has run successfully. Ptr is " + _entityID);
     }
 
     public override void Decimate()

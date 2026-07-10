@@ -2,11 +2,13 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Scripting;
+using ScriptEngine;
 using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using VortexArcana;
 
@@ -35,9 +37,11 @@ namespace ScriptHost
     {
         private readonly string _projectPath;
         private CollectibleAssemblyContext? _loadContext;
+        private static int _isResolverSet = 0;
         private Dictionary<string, Type> _scriptTypes = new Dictionary<string, Type>();
         public Dictionary<IntPtr, BaseEntity?>? CurrentInstances = new Dictionary<IntPtr, BaseEntity?>();
         public Dictionary<IntPtr, Dictionary<string, object>>? SavedStates = new Dictionary<IntPtr, Dictionary<string, object>>();
+        public Dictionary<Type, int> componentRegistry;
 
         FileSystemWatcher watcher;
         private static Timer _debounceTimer;
@@ -48,6 +52,21 @@ namespace ScriptHost
             _projectPath = projectPath;
             SetupFileWatcher();
             Reload();
+
+            componentRegistry = new Dictionary<Type, int>();
+            componentRegistry[typeof(SpriteRenderer2D)] = 1;
+            componentRegistry[typeof(Physics2D)] = 2;
+
+            ComponentRegistryGateway.LookupId = this.GetComponentID;
+        }
+
+        private int GetComponentID(Type componentType)
+        {
+            if (componentRegistry.TryGetValue(componentType, out int id))
+            {
+                return id;
+            }
+            throw new Exception($"Component {componentType.Name} is not registered in the component registry.");
         }
 
         private void SetupFileWatcher()
@@ -103,11 +122,18 @@ namespace ScriptHost
                     syntaxTrees.Add(InjectSaveReloadState(CSharpSyntaxTree.ParseText(code)));
                 }
 
-                var references = AppDomain.CurrentDomain.GetAssemblies()
-                    .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
-                    .Select(a => MetadataReference.CreateFromFile(a.Location))
-                    .Cast<MetadataReference>()
+                // Get all trusted assemblies to avoid adding specific ones like Vectors manually.
+                string trustedAssemblies = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES");
+                string[] trustedAssemblyPaths = trustedAssemblies.Split(Path.PathSeparator);
+
+                var references = trustedAssemblyPaths
+                    .Where(path => !string.IsNullOrWhiteSpace(path))
+                    .Select(path => MetadataReference.CreateFromFile(path))
                     .ToList();
+
+                // Add BridgeAPI reference so upcalls can be done.
+                string coreEngineDll = typeof(BridgeAPI).Assembly.Location;
+                references.Add(MetadataReference.CreateFromFile(coreEngineDll));
 
                 // Rosyln Compilation
                 var compilation = CSharpCompilation.Create(
@@ -139,9 +165,9 @@ namespace ScriptHost
                     {
                         if (script != null)
                         {
-                            oldInstances[script.ScriptInstancePtr] = script.GetType().Name;
-                            script.SaveState(SavedStates![script.ScriptInstancePtr]);
-                            Console.WriteLine($"Saved state for EntityID: {script.ScriptInstancePtr} of type {script.GetType().Name}");
+                            oldInstances[script._entityID] = script.GetType().Name;
+                            script.SaveState(SavedStates![script._entityID]);
+                            Console.WriteLine($"Saved state for EntityID: {script._entityID} of type {script.GetType().Name}");
                             Console.WriteLine("Saved States Status:");
                             foreach ((IntPtr id, Dictionary<string, object> states) in SavedStates)
                             {
@@ -278,6 +304,7 @@ namespace ScriptHost
                 )
             );
             SyntaxList<StatementSyntax> reloadStatements = SyntaxFactory.List<StatementSyntax>();
+            int valDeclared = 0;
             foreach (FieldDeclarationSyntax field in publicFields)
             {
                 ElementAccessExpressionSyntax mapAccess = SyntaxFactory.ElementAccessExpression(
@@ -317,9 +344,10 @@ namespace ScriptHost
                                     SyntaxFactory.Literal(field.Declaration.Variables.First().Identifier.ValueText)
                                 )),
                                 SyntaxFactory.Token(SyntaxKind.CommaToken),
-                                // Second argument: out var value
+                                // Second argument: out var val
                                 SyntaxFactory.Argument(
-                                    SyntaxFactory.DeclarationExpression(
+                                    (valDeclared == 0) ?
+                                    (ExpressionSyntax)SyntaxFactory.DeclarationExpression(
                                         SyntaxFactory.IdentifierName(
                                             SyntaxFactory.Identifier(
                                                 SyntaxFactory.TriviaList(),
@@ -329,14 +357,15 @@ namespace ScriptHost
                                                 SyntaxFactory.TriviaList()
                                             )
                                         ),
-                                        SyntaxFactory.SingleVariableDesignation(SyntaxFactory.Identifier("value"))
-                                    )
+                                        SyntaxFactory.SingleVariableDesignation(SyntaxFactory.Identifier("val"))
+                                    ) : (ExpressionSyntax)SyntaxFactory.IdentifierName("val")
                                 )
                                 .WithRefOrOutKeyword(SyntaxFactory.Token(SyntaxKind.OutKeyword))
                             }
                         )
                     )
                 );
+                valDeclared = 1;
                 ExpressionStatementSyntax printVarStatement = SyntaxFactory.ExpressionStatement(
                     SyntaxFactory.InvocationExpression(
                         SyntaxFactory.MemberAccessExpression(
@@ -399,9 +428,9 @@ namespace ScriptHost
                 if (_scriptTypes.TryGetValue(typename, out Type? type))
                 {
                     CurrentInstances[EntityID] = (BaseEntity?)Activator.CreateInstance(type);
-                    CurrentInstances[EntityID]!.ScriptInstancePtr = EntityID;
+                    CurrentInstances[EntityID]!.EngineInit(EntityID);
                     CurrentInstances[EntityID]!.ReloadState(SavedStates![EntityID]);
-                    Console.WriteLine($"Reloaded state for EntityID: {CurrentInstances[EntityID]!.ScriptInstancePtr} of type {CurrentInstances[EntityID]!.GetType().Name}");
+                    Console.WriteLine($"Reloaded state for EntityID: {CurrentInstances[EntityID]!._entityID} of type {CurrentInstances[EntityID]!.GetType().Name}");
                     count += 1;
                 }
             }
@@ -413,7 +442,7 @@ namespace ScriptHost
             if (CurrentInstances != null && _scriptTypes.TryGetValue(scriptName, out Type? type))
             {
                 CurrentInstances[EntityID] = (BaseEntity?)Activator.CreateInstance(type);
-                CurrentInstances[EntityID]!.ScriptInstancePtr = EntityID;
+                CurrentInstances[EntityID]!.EngineInit(EntityID);
                 SavedStates![EntityID] = new Dictionary<string, object>();
                 Console.WriteLine("[C# Host] Instantiated script: " + scriptName + " with EntityID: " + EntityID);
             }

@@ -44,8 +44,8 @@ set(VORTEX_SOURCES
     src/Core/Components/Physics2D.h
     src/Core/Entities/Tile.h
     external/glad/src/glad.c
-    assets/shaders/basicFragment.glsl
-    assets/shaders/basicVertex.glsl
+    assets/shaders/TexFragment.glsl
+    assets/shaders/TexVertex.glsl
 )
 
 add_executable(VortexArcana ${VORTEX_SOURCES} ${IMGUI_SOURCES})

@@ -59,7 +59,7 @@ namespace Vortex {
 		}
 
 		void UpdateComponents(float deltaTime);
-		void RenderComponents();
+		void RenderComponents(glm::mat4 viewMatrix);
 
 		// Getters
 		int*& EntityID() { 

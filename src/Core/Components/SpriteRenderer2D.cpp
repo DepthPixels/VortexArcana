@@ -8,9 +8,9 @@ using namespace Vortex;
 SpriteRenderer2D::SpriteRenderer2D(Shader* shader): shader(shader) {
 	initRenderData();
 	if (!shader) {
-		this->shader = new Shader("assets/shaders/basicVertex.glsl", "assets/shaders/basicFragment.glsl");
+		this->shader = new Shader("assets/shaders/TexVertex.glsl", "assets/shaders/TexFragment.glsl");
 	}
-	this->singleColorShader = new Shader("assets/shaders/basicVertex.glsl", "assets/shaders/singleColorFragment.glsl");
+	this->singleColorShader = new Shader("assets/shaders/TexVertex.glsl", "assets/shaders/singleColorFragment.glsl");
 };
 	
 void SpriteRenderer2D::initRenderData() {
@@ -67,7 +67,7 @@ void SpriteRenderer2D::LoadSprite(const char* location, bool alpha) {
 	}
 }
 
-void SpriteRenderer2D::DrawSprite(Vortex::Vec2 position, Vortex::Vec2 size, float rotation, Vortex::Vec3 color) {
+void SpriteRenderer2D::DrawSprite(Vortex::Vec2 position, Vortex::Vec2 size, float rotation, Vortex::Vec3 color, glm::mat4 viewMatrix) {
 
 	// Activate Shader Program.
 	this->shader->use();
@@ -84,8 +84,9 @@ void SpriteRenderer2D::DrawSprite(Vortex::Vec2 position, Vortex::Vec2 size, floa
 
 	// Set Shader Uniforms.
 	this->shader->setMat4("model", model);
-	glm::mat4 projection = glm::ortho(0.0f, 1280.0f, 720.0f, 0.0f, -1.0f, 1.0f);
+	glm::mat4 projection = glm::ortho(0.0f, 1280.0f, 720.0f, 0.0f, -1.0f, 50.0f);
 	this->shader->setMat4("projection", projection);
+	this->shader->setMat4("view", viewMatrix);
 	shader->setVec3("spriteColor", color);
 
 	// Bind Texture.
@@ -122,8 +123,9 @@ void SpriteRenderer2D::DrawSprite(Vortex::Vec2 position, Vortex::Vec2 size, floa
 
 
 		singleColorShader->setMat4("model", model);
-		glm::mat4 projection = glm::ortho(0.0f, 1280.0f, 720.0f, 0.0f, -1.0f, 1.0f);
+		glm::mat4 projection = glm::ortho(0.0f, 1280.0f, 720.0f, 0.0f, 0.1f, 50.0f);
 		singleColorShader->setMat4("projection", projection);
+		this->singleColorShader->setMat4("view", viewMatrix);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glBindVertexArray(0);
 		glStencilMask(0xFF);

@@ -59,10 +59,23 @@ bool Engine::Initialize() {
 	spriteComponent->LoadSprite("assets/yehyafreshman.png", true);
 	object1->AddComponent(spriteComponent);
 	Vortex::Physics2D* physics2D = new Vortex::Physics2D();
-	std::cout << "Physics2D init at: " << physics2D << std::endl;
 	physics2D->Mass() = 1000.0f;
 	object1->AddComponent(physics2D);
 	m_entities.push_back(object1);
+
+	// Camera Stuff
+	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+
+	glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 directionToCamera = glm::normalize(cameraPos - cameraTarget);
+
+	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::vec3 cameraRight = glm::normalize(glm::cross(up, directionToCamera));
+	glm::vec3 cameraUp = glm::cross(directionToCamera, cameraRight);
+
+	glm::mat4 view = glm::lookAt(cameraPos, cameraTarget, up);
+
+	m_currentViewMatrix = view;
 
 	// Setting up FBO.
 	glGenFramebuffers(1, &m_fbo);
@@ -165,6 +178,17 @@ void Engine::ProcessInput() {
 					}
 				}
 			}
+			if (event.button.button == SDL_BUTTON_MIDDLE) {
+				Vortex::Vec2 clickPos = { event.button.x, event.button.y };
+				if (m_viewportRect.isPosInRect(clickPos)) {
+					if (m_selectedEntity != nullptr) {
+						m_selectedEntity->isSelected = false;
+						m_selectedEntity->isBeingDragged = false;
+						m_selectedEntity = nullptr;
+					}
+					m_isDragging = true;
+				}
+			}
 			break;
 		case SDL_EVENT_MOUSE_BUTTON_UP:
 			if (event.button.button == SDL_BUTTON_LEFT) {
@@ -176,12 +200,24 @@ void Engine::ProcessInput() {
 					}
 				}
 			}
+			if (event.button.button == SDL_BUTTON_MIDDLE) {
+				Vortex::Vec2 clickPos = { event.button.x, event.button.y };
+				if (m_viewportRect.isPosInRect(clickPos)) {
+					m_isDragging = false;
+				}
+			}
 			break;
 		case SDL_EVENT_MOUSE_MOTION: {
 			Vortex::Vec2 mousePos = { event.motion.x, event.motion.y };
 			if (m_isDragging) {
-				Vortex::Vec2 viewportCoords = CoordsScreenToViewport(mousePos);
-				m_selectedEntity->bounds.position = viewportCoords + m_dragOffset;
+				if (m_selectedEntity != nullptr) {
+					Vortex::Vec2 viewportCoords = CoordsScreenToViewport(mousePos);
+					m_selectedEntity->bounds.position = viewportCoords + m_dragOffset;
+				}
+				else {
+					// Dragging Viewport
+					m_currentViewMatrix = glm::translate(m_currentViewMatrix, glm::vec3(event.motion.xrel, event.motion.yrel, 0.0f));
+				}
 			}
 			break;
 		}
@@ -189,6 +225,18 @@ void Engine::ProcessInput() {
 			if (event.key.key == SDLK_ESCAPE) {
 				m_tilingMode = false;
 				m_selectedTileLocation = "None";
+			}
+			else if (event.key.key == SDLK_W) {
+				m_currentViewMatrix = glm::translate(m_currentViewMatrix, glm::vec3(0.0f, -10.0f, 0.0f));
+			}
+			else if (event.key.key == SDLK_A) {
+				m_currentViewMatrix = glm::translate(m_currentViewMatrix, glm::vec3(-10.0f, 0.0f, 0.0f));
+			}
+			else if (event.key.key == SDLK_S) {
+				m_currentViewMatrix = glm::translate(m_currentViewMatrix, glm::vec3(0.0f, 10.0f, 0.0f));
+			}
+			else if (event.key.key == SDLK_D) {
+				m_currentViewMatrix = glm::translate(m_currentViewMatrix, glm::vec3(10.0f, 0.0f, 0.0f));
 			}
 			break;
 		case SDL_EVENT_QUIT:
@@ -233,7 +281,7 @@ void Engine::Render() {
 
 	// Draw Entities.
 	for (Vortex::Entity* entity : m_entities) {
-		entity->RenderComponents();
+		entity->RenderComponents(m_currentViewMatrix);
 	}
 
 	// Unbind FBO.

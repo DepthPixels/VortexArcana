@@ -62,6 +62,7 @@ private:
     unsigned int m_fbo;
     unsigned int m_viewportTexture;
     unsigned int m_rbo;
+    glm::mat4 m_currentViewMatrix;
     Vortex::Vec2 m_viewportSize = { 1280.0f, 720.0f };
 	bool m_tilingMode = false;
     std::vector<std::string> m_tileLocations;

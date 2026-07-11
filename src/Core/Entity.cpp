@@ -22,8 +22,8 @@ void Entity::UpdateComponents(float deltaTime) {
 	}
 }
 
-void Entity::RenderComponents() {
+void Entity::RenderComponents(glm::mat4 viewMatrix) {
 	for (Component* component : components) {
-		component->Render();
+		component->Render(viewMatrix);
 	}
 }

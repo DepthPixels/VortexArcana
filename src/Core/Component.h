@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace Vortex {
     // Forward declaration fixes circular includes.
@@ -20,7 +23,7 @@ namespace Vortex {
         virtual void Update(float deltaTime) {}
 
         // Called every frame for rendering.
-        virtual void Render() {}
+        virtual void Render(glm::mat4 viewMatrix) {}
 
         virtual std::string GetName() {
             return "Default";

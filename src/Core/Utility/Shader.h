@@ -100,6 +100,9 @@ public:
 	void setFloat(const std::string& name, float value) const {
 		glUniform1f(glGetUniformLocation(ID, name.c_str()), value);
 	}
+	void setVec2(const std::string& name, Vortex::Vec2 vec2) const {
+		glUniform2f(glGetUniformLocation(ID, name.c_str()), vec2.x, vec2.y);
+	}
 	void setVec3(const std::string& name, Vortex::Vec3 vec3) const {
 		glUniform3f(glGetUniformLocation(ID,  name.c_str()), vec3.x, vec3.y, vec3.z);
 	}

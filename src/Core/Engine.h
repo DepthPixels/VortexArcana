@@ -19,6 +19,13 @@
 #include "Core/Utility/ScriptingInterface.h"
 #include "Core/Components/SpriteRenderer2D.h"
 #include "Core/Components/Physics2D.h"
+#include "Core/Components/PointLight.h"
+
+enum class DisplayMode {
+    Combined,
+    Albedo,
+    Ambient
+};
 
 class Engine {
 public:
@@ -46,8 +53,7 @@ private:
     unsigned int m_vao, m_vbo, m_ebo;
     
     // Shaders
-    unsigned int m_shaderProgram;
-    Shader* m_basicShader = nullptr;
+    Shader* m_compositionShader = nullptr;
     
     std::string currentScene = "Default Scene";
     bool m_isOpen = false;
@@ -58,10 +64,18 @@ private:
 
     float m_meterToPixel = 20.0f;
 
+    DisplayMode m_chosenDisplayMode;
     Vortex::Rect m_viewportRect;
-    unsigned int m_fbo;
+    unsigned int m_viewport_fbo;
+    unsigned int m_albedo_fbo;
+    unsigned int m_ambient_fbo;
+    unsigned int m_occlusion_fbo;
     unsigned int m_viewportTexture;
-    unsigned int m_rbo;
+    unsigned int m_albedoTexture;
+    unsigned int m_ambientTexture;
+    unsigned int m_occlusionTexture;
+    unsigned int m_albedo_rbo;
+    unsigned int m_occlusion_rbo;
     glm::mat4 m_currentViewMatrix;
     Vortex::Vec2 m_viewportSize = { 1280.0f, 720.0f };
 	bool m_tilingMode = false;

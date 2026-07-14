@@ -1,8 +1,9 @@
 #include "Engine.h"
 #include <iostream>
 
+
 Engine::Engine()
-	: m_window(nullptr), m_isOpen(false), m_isRunning(false), m_basicShader(nullptr) {
+	: m_window(nullptr), m_isOpen(false), m_isRunning(false) {
 	// Constructor Defaults.
 }
 
@@ -61,7 +62,14 @@ bool Engine::Initialize() {
 	Vortex::Physics2D* physics2D = new Vortex::Physics2D();
 	physics2D->Mass() = 1000.0f;
 	object1->AddComponent(physics2D);
-	m_entities.push_back(object1);
+	m_entities.push_back(object1);	
+
+	Vortex::Entity* object2 = new Vortex::Entity();
+	object2->name = "Spotlight";
+	object2->bounds = { 100.0f, 200.0f, 100.0f, 100.0f };
+	Vortex::PointLight* ptlght = new Vortex::PointLight();
+	object2->AddComponent(ptlght);
+	m_entities.push_back(object2);
 
 	// Camera Stuff
 	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
@@ -77,10 +85,15 @@ bool Engine::Initialize() {
 
 	m_currentViewMatrix = view;
 
-	// Setting up FBO.
-	glGenFramebuffers(1, &m_fbo);
-	glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+	m_compositionShader = new Shader("assets/shaders/compositionVertex.glsl", "assets/shaders/compositionFragment.glsl");
 
+	// Setting up FBO.
+	glGenFramebuffers(1, &m_viewport_fbo);
+	glGenFramebuffers(1, &m_albedo_fbo);
+	glGenFramebuffers(1, &m_ambient_fbo);
+	glGenFramebuffers(1, &m_occlusion_fbo);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, m_viewport_fbo);
 	glGenTextures(1, &m_viewportTexture);
 	glBindTexture(GL_TEXTURE_2D, m_viewportTexture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (int)m_viewportSize.x, (int)m_viewportSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -88,12 +101,42 @@ bool Engine::Initialize() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_viewportTexture, 0);
 
-	// Render Buffer Object
-	unsigned int rbo;
-	glGenRenderbuffers(1, &rbo);
-	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, m_albedo_fbo);
+	glGenTextures(1, &m_albedoTexture);
+	glBindTexture(GL_TEXTURE_2D, m_albedoTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (int)m_viewportSize.x, (int)m_viewportSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_albedoTexture, 0);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, m_ambient_fbo);
+	glGenTextures(1, &m_ambientTexture);
+	glBindTexture(GL_TEXTURE_2D, m_ambientTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (int)m_viewportSize.x, (int)m_viewportSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ambientTexture, 0);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, m_occlusion_fbo);
+	glGenTextures(1, &m_occlusionTexture);
+	glBindTexture(GL_TEXTURE_2D, m_occlusionTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (int)m_viewportSize.x, (int)m_viewportSize.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_occlusionTexture, 0);
+
+	// Render Buffer Objects
+	glBindFramebuffer(GL_FRAMEBUFFER, m_albedo_fbo);
+	glGenRenderbuffers(1, &m_albedo_rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, m_albedo_rbo);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, (int)m_viewportSize.x, (int)m_viewportSize.y);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_albedo_rbo);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, m_occlusion_rbo);
+	glGenRenderbuffers(1, &m_occlusion_rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, m_occlusion_rbo);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, (int)m_viewportSize.x, (int)m_viewportSize.y);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_occlusion_rbo);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
@@ -101,6 +144,37 @@ bool Engine::Initialize() {
 
 	// Unbind.
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
+	// Simple Square for the composition
+	float quadVertices[] = {
+		// Positions   // TexCoords
+		-1.0f,  1.0f,  0.0f, 1.0f, // Top Left
+		-1.0f, -1.0f,  0.0f, 0.0f, // Bottom Left
+		 1.0f, -1.0f,  1.0f, 0.0f, // Bottom Right
+
+		-1.0f,  1.0f,  0.0f, 1.0f, // Top Left
+		 1.0f, -1.0f,  1.0f, 0.0f, // Bottom Right
+		 1.0f,  1.0f,  1.0f, 1.0f  // Top Right
+	};
+
+	glGenVertexArrays(1, &m_vao);
+	glGenBuffers(1, &m_vbo);
+
+	glBindVertexArray(m_vao);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+
+	// Position Attribute (X, Y)
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+
+	// Texture Coordinate Attribute (U, V)
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+	glBindVertexArray(0); // Unbind
+
+	m_chosenDisplayMode = DisplayMode::Combined;
 
 	// ImGui setup.
 	IMGUI_CHECKVERSION();
@@ -264,8 +338,8 @@ void Engine::Update(float deltaTime) {
 
 void Engine::Render() {
 
-	// Render Game to FBO.
-	glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+	// Bind to Albedo FBO.
+	glBindFramebuffer(GL_FRAMEBUFFER, m_albedo_fbo);
 	// Game Resolution.
 	glViewport(0, 0, m_viewportSize.x, m_viewportSize.y);
 
@@ -273,16 +347,57 @@ void Engine::Render() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDisable(GL_DEPTH_TEST);
 
-	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
+	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 	// Stencil Buffer stuff.
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
-	// Draw Entities.
+	// Draw to Albedo FBO
 	for (Vortex::Entity* entity : m_entities) {
-		entity->RenderComponents(m_currentViewMatrix);
+		entity->RenderAlbedo(m_currentViewMatrix);
 	}
+
+	// Unbind FBO.
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Bind to Ambient FBO.
+	glBindFramebuffer(GL_FRAMEBUFFER, m_ambient_fbo);
+	glBlendFunc(GL_ONE, GL_ONE);
+
+	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	// Draw to Ambient FBO
+	for (Vortex::Entity* entity : m_entities) {
+		entity->RenderLights(m_currentViewMatrix);
+	}
+
+	// Unbind FBO.
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Bind to Viewport FBO.
+	glBindFramebuffer(GL_FRAMEBUFFER, m_viewport_fbo);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	glDisable(GL_BLEND);
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_STENCIL_TEST);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_albedoTexture);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, m_ambientTexture);
+
+	m_compositionShader->use();
+	m_compositionShader->setInt("albedoTextureID", 0);
+	m_compositionShader->setInt("ambientTextureID", 1);
+
+	glBindVertexArray(m_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
 
 	// Unbind FBO.
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -323,6 +438,11 @@ void Engine::ShowViewportWindow() {
 	if (ImGui::Button("Stop")) m_isRunning = false;
 	ImGui::EndDisabled();
 
+	ImGui::Text("Render Mode");
+	if (ImGui::Button("Combined")) m_chosenDisplayMode = DisplayMode::Combined;
+	if (ImGui::Button("Albedo")) m_chosenDisplayMode = DisplayMode::Albedo;
+	if (ImGui::Button("Ambient")) m_chosenDisplayMode = DisplayMode::Ambient;
+
 	// Get Window Size
 	ImVec2 windowSize = ImGui::GetContentRegionAvail();
 
@@ -349,7 +469,21 @@ void Engine::ShowViewportWindow() {
 
 	ImGui::SetCursorPos(ImVec2(ImGui::GetCursorPosX() + offsetX, ImGui::GetCursorPosY() + offsetY));
 
-	ImGui::Image((ImTextureID)(uintptr_t)m_viewportTexture, ImVec2(renderWidth, renderHeight), ImVec2(0, 1), ImVec2(1, 0));
+	ImTextureID chosenTexture;
+
+	switch (m_chosenDisplayMode) {
+		case DisplayMode::Combined:
+			chosenTexture = (ImTextureID)(intptr_t)m_viewportTexture;
+			break;
+		case DisplayMode::Albedo:
+			chosenTexture = (ImTextureID)(intptr_t)m_albedoTexture;
+			break;
+		case DisplayMode::Ambient:
+			chosenTexture = (ImTextureID)(intptr_t)m_ambientTexture;
+			break;
+	}
+
+	ImGui::Image(chosenTexture, ImVec2(renderWidth, renderHeight), ImVec2(0, 1), ImVec2(1, 0));
 
 	ImGui::End();
 }
@@ -429,6 +563,14 @@ void Engine::ShowEditorUI() {
 					ImGui::DragFloat("Mass", &physics->Mass(), 1.0f, 0.1f, 10000.0f);
 					ImGui::Text("Velocity: (%.2f, %.2f)", physics->Velocity().x, physics->Velocity().y);
 				}
+				Vortex::PointLight* pointlight = dynamic_cast<Vortex::PointLight*>(component);
+				if (pointlight) {
+					ImGui::Text("- Point Light");
+					ImGui::DragFloat("Brightness", &pointlight->brightness);
+					ImGui::DragFloat("Falloff", &pointlight->falloff);
+					ImGui::DragFloat("Radius", &pointlight->radius);
+					ImGui::ColorEdit3("Color", (float*)&pointlight->color);
+				}
 			}
 		}
 
@@ -441,11 +583,17 @@ void Engine::ShowEditorUI() {
 			if (ImGui::Selectable("Sprite Renderer 2D")) {
 				Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D;
 				m_selectedEntity->AddComponent(spriteComponent);
+				std::cout << "Added SpriteRenderer2D Component to " << m_selectedEntity->name << std::endl;
 			}
 			if (ImGui::Selectable("Physics 2D")) {
 				Vortex::Physics2D* physicsComponent = new Vortex::Physics2D();
 				m_selectedEntity->AddComponent(physicsComponent);
 				std::cout << "Added Physics2D Component to " << m_selectedEntity->name << std::endl;
+			}
+			if (ImGui::Selectable("Point Light")) {
+				Vortex::PointLight* pointLightComponent = new Vortex::PointLight();
+				m_selectedEntity->AddComponent(pointLightComponent);
+				std::cout << "Added PointLight Component to " << m_selectedEntity->name << std::endl;
 			}
 			ImGui::EndPopup();
 		}
@@ -505,7 +653,6 @@ void Engine::Shutdown() {
 	// Cleanup Function
 	glDeleteVertexArrays(1, &m_vao);
 	glDeleteBuffers(1, &m_vbo);
-	glDeleteProgram(m_shaderProgram);
 
 	// Close Bridge
 	exit_bridge();

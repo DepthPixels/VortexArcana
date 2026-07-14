@@ -24,7 +24,8 @@
 enum class DisplayMode {
     Combined,
     Albedo,
-    Ambient
+    Ambient,
+    Occlusion
 };
 
 class Engine {

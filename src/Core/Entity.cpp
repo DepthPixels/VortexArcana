@@ -25,13 +25,19 @@ void Entity::UpdateComponents(float deltaTime) {
 }
 
 void Entity::RenderAlbedo(glm::mat4 viewMatrix) {
-	for (Component* component : GetComponents<SpriteRenderer2D>()) {
+	for (SpriteRenderer2D* component : GetComponents<SpriteRenderer2D>()) {
 		component->Render(viewMatrix);
 	}
 }
 
 void Entity::RenderLights(glm::mat4 viewMatrix) {
-	for (Component* component : GetComponents<PointLight>()) {
+	for (PointLight* component : GetComponents<PointLight>()) {
 		component->Render(viewMatrix);
+	}
+}
+
+void Entity::RenderOcclusion(glm::mat4 viewMatrix) {
+	for (SpriteRenderer2D* component : GetComponents<SpriteRenderer2D>()) {
+		component->RenderOcclusion(viewMatrix);
 	}
 }

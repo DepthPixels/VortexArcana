@@ -34,7 +34,6 @@ namespace Vortex {
 
 	private:
 		Shader* shader;
-		Shader* singleColorShader;
 		unsigned int quadVAO;
 
 		void initRenderData();

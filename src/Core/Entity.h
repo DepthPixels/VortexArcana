@@ -61,6 +61,7 @@ namespace Vortex {
 		void UpdateComponents(float deltaTime);
 		void RenderAlbedo(glm::mat4 viewMatrix);
 		void RenderLights(glm::mat4 viewMatrix);
+		void RenderOcclusion(glm::mat4 viewMatrix);
 
 		// Getters
 		int*& EntityID() { 

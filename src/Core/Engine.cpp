@@ -338,14 +338,27 @@ void Engine::Update(float deltaTime) {
 
 void Engine::Render() {
 
-	// Bind to Albedo FBO.
-	glBindFramebuffer(GL_FRAMEBUFFER, m_albedo_fbo);
-	// Game Resolution.
-	glViewport(0, 0, m_viewportSize.x, m_viewportSize.y);
+	// Bind to Occlusion FBO.
+	glBindFramebuffer(GL_FRAMEBUFFER, m_occlusion_fbo);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDisable(GL_DEPTH_TEST);
+
+	// Game Resolution.
+	glViewport(0, 0, m_viewportSize.x, m_viewportSize.y);
+
+	// Draw to Occlusion FBO
+	for (Vortex::Entity* entity : m_entities) {
+		entity->RenderOcclusion(m_currentViewMatrix);
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Bind to Albedo FBO.
+	glBindFramebuffer(GL_FRAMEBUFFER, m_albedo_fbo);
 
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -367,6 +380,9 @@ void Engine::Render() {
 
 	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
+
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, m_occlusionTexture);
 
 	// Draw to Ambient FBO
 	for (Vortex::Entity* entity : m_entities) {
@@ -442,6 +458,7 @@ void Engine::ShowViewportWindow() {
 	if (ImGui::Button("Combined")) m_chosenDisplayMode = DisplayMode::Combined;
 	if (ImGui::Button("Albedo")) m_chosenDisplayMode = DisplayMode::Albedo;
 	if (ImGui::Button("Ambient")) m_chosenDisplayMode = DisplayMode::Ambient;
+	if (ImGui::Button("Occlusion")) m_chosenDisplayMode = DisplayMode::Occlusion;
 
 	// Get Window Size
 	ImVec2 windowSize = ImGui::GetContentRegionAvail();
@@ -480,6 +497,9 @@ void Engine::ShowViewportWindow() {
 			break;
 		case DisplayMode::Ambient:
 			chosenTexture = (ImTextureID)(intptr_t)m_ambientTexture;
+			break;
+		case DisplayMode::Occlusion:
+			chosenTexture = (ImTextureID)(intptr_t)m_occlusionTexture;
 			break;
 	}
 

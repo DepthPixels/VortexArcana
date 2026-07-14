@@ -11,6 +11,7 @@ SpriteRenderer2D::SpriteRenderer2D(Shader* shader): shader(shader) {
 		this->shader = new Shader("assets/shaders/TexVertex.glsl", "assets/shaders/TexFragment.glsl");
 	}
 	this->singleColorShader = new Shader("assets/shaders/TexVertex.glsl", "assets/shaders/singleColorFragment.glsl");
+	this->occlusionShader = new Shader("assets/shaders/OcclusionVertex.glsl", "assets/shaders/OcclusionFragment.glsl");
 };
 	
 void SpriteRenderer2D::initRenderData() {
@@ -132,7 +133,36 @@ void SpriteRenderer2D::DrawSprite(Vortex::Vec2 position, Vortex::Vec2 size, floa
 		glStencilFunc(GL_ALWAYS, 0, 0xFF);
 		glEnable(GL_DEPTH_TEST);
 	}
-	glBindVertexArray(0);
+	glBindVertexArray(0);	
+}
 
-	
+void SpriteRenderer2D::DrawOcclusion(Vortex::Vec2 position, Vortex::Vec2 size, float rotation, glm::mat4 viewMatrix) {
+
+	// Activate Shader Program.
+	this->occlusionShader->use();
+
+	// Model Matrix (Local Space).
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::translate(model, glm::vec3((glm::vec2)position, 0.0f));
+
+	model = glm::translate(model, glm::vec3(0.5f * size.x, 0.5f * size.y, 0.0f));
+	model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 0.0f, 1.0f));
+	model = glm::translate(model, glm::vec3(-0.5f * size.x, -0.5f * size.y, 0.0f));
+
+	model = glm::scale(model, glm::vec3((glm::vec2)size, 1.0f));
+
+	// Set Shader Uniforms.
+	this->occlusionShader->setMat4("model", model);
+	glm::mat4 projection = glm::ortho(0.0f, 1280.0f, 720.0f, 0.0f, -1.0f, 50.0f);
+	this->occlusionShader->setMat4("projection", projection);
+	this->occlusionShader->setMat4("view", viewMatrix);
+
+	// Bind Texture.
+	glActiveTexture(GL_TEXTURE0);
+	this->texture.Bind();
+
+	// Bind VAO, Draw, then Unbind.
+	glBindVertexArray(this->quadVAO);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
 }

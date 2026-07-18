@@ -25,6 +25,6 @@ void Physics2D::Integrate(float deltaTime) {
 
 	acceleration = forceAccumulator * (1.0f / mass);
 	velocity += acceleration * deltaTime;
-	this->owner->bounds.position += velocity * deltaTime;
+	this->owner->SetPosition(this->owner->GetPosition() + (velocity * deltaTime));
 	forceAccumulator = { 0.0f, 0.0f };
 }

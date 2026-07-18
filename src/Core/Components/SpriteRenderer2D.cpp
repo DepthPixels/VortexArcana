@@ -64,6 +64,8 @@ void SpriteRenderer2D::LoadSprite(const char* location, bool alpha) {
 		stbi_image_free(data);
 		this->spriteAssigned = true;
 		this->spriteLocation = (std::string)location;
+		owner->bounds.w = width * 2;
+		owner->bounds.h = height * 2;
 		std::cout << "Loaded Sprite at: " << location << std::endl;
 	}
 }

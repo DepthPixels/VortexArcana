@@ -11,19 +11,18 @@ namespace Vortex {
 	class PointLight : public Component {
 	public:
 		Vec3 color = { 1.0f, 1.0f, 1.0f };
-		float brightness = 1.0f;
+		float brightness = 0.9f;
 		float falloff = 2.0f;
-		float radius = 200.0f;
+		float radius = 400.0f;
 		bool active = true;
 
-		PointLight(Shader* shader = nullptr);
 		~PointLight();
 
-		void Illuminate(Vortex::Vec2 position, glm::mat4 viewMatrix);
+		void Illuminate(Vortex::Vec2 position, std::vector<float>& lightData, int& lightIndex);
 
-		void Render(glm::mat4 viewMatrix) override {
+		void RenderLights(std::vector<float>& lightData, int& lightIndex) {
 			if (active) {
-				Illuminate(owner->bounds.position, viewMatrix);
+				Illuminate(owner->bounds.position, lightData, lightIndex);
 			}
 		}
 
@@ -33,9 +32,5 @@ namespace Vortex {
 		}
 
 	private:
-		Shader* shader;
-		unsigned int quadVAO;
-
-		void initRenderData();
 	};
 }

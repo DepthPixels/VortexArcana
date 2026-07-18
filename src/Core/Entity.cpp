@@ -24,15 +24,16 @@ void Entity::UpdateComponents(float deltaTime) {
 	}
 }
 
+// Rendering helpers.
 void Entity::RenderAlbedo(glm::mat4 viewMatrix) {
 	for (SpriteRenderer2D* component : GetComponents<SpriteRenderer2D>()) {
 		component->Render(viewMatrix);
 	}
 }
 
-void Entity::RenderLights(glm::mat4 viewMatrix) {
+void Entity::RenderLights(std::vector<float>& lightData, int& lightIndex) {
 	for (PointLight* component : GetComponents<PointLight>()) {
-		component->Render(viewMatrix);
+		component->RenderLights(lightData, lightIndex);
 	}
 }
 
@@ -40,4 +41,11 @@ void Entity::RenderOcclusion(glm::mat4 viewMatrix) {
 	for (SpriteRenderer2D* component : GetComponents<SpriteRenderer2D>()) {
 		component->RenderOcclusion(viewMatrix);
 	}
+}
+
+// Children helpers.
+void Entity::AddChild(Entity* child) {
+	if (child == nullptr) return;
+	if (std::find(this->children.begin(), this->children.end(), child) != this->children.end()) return; // Already a child.
+	this->children.push_back(child);
 }

@@ -19,6 +19,16 @@ namespace Vortex {
 			x *= scalar;
 			y *= scalar;
 		}
+		Vec2 operator/(float scalar) const {
+			return Vec2{
+				x / scalar,
+				y / scalar
+			};
+		}
+		void operator/=(float scalar) {
+			x /= scalar;
+			y /= scalar;
+		}
 
 		// Vector Operations
 		Vec2 operator+(const Vec2& other) const {

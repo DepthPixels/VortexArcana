@@ -57,8 +57,8 @@ bool Engine::Initialize() {
 	object1->name = "Yehya Freshman Sprite";
 	object1->bounds = { 300.0f, 200.0f, 200.0f, 200.0f };
 	Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D;
-	spriteComponent->LoadSprite("assets/yehyafreshman.png", true);
 	object1->AddComponent(spriteComponent);
+	spriteComponent->LoadSprite("assets/LightTest.png", true);
 	Vortex::Physics2D* physics2D = new Vortex::Physics2D();
 	physics2D->Mass() = 1000.0f;
 	object1->AddComponent(physics2D);
@@ -69,7 +69,15 @@ bool Engine::Initialize() {
 	object2->bounds = { 100.0f, 200.0f, 100.0f, 100.0f };
 	Vortex::PointLight* ptlght = new Vortex::PointLight();
 	object2->AddComponent(ptlght);
+	//object2->SetParent(object1);
 	m_entities.push_back(object2);
+
+	Vortex::Entity* object3 = new Vortex::Entity();
+	object3->name = "Spotlight 2";
+	object3->bounds = { 200.0f, 100.0f, 100.0f, 100.0f };
+	Vortex::PointLight* ptlght2 = new Vortex::PointLight();
+	object3->AddComponent(ptlght2);
+	m_entities.push_back(object3);
 
 	// Camera Stuff
 	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
@@ -86,12 +94,28 @@ bool Engine::Initialize() {
 	m_currentViewMatrix = view;
 
 	m_compositionShader = new Shader("assets/shaders/compositionVertex.glsl", "assets/shaders/compositionFragment.glsl");
+	m_gaussBlurShader = new Shader("assets/shaders/GaussianVertex.glsl", "assets/shaders/GaussianFragment.glsl");
+	m_lightingShader = new Shader("assets/shaders/pointLightVertex.glsl", "assets/shaders/pointLightFragmentAlternate.glsl");
+
+	// Setting up SSBO.
+	m_lightData.resize(160); // Reserve space for 20 lights.
+
+	glGenBuffers(1, &m_ssbo);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssbo);
+
+	size_t bufferSize = m_lightData.size() * sizeof(float);
+
+	glBufferData(GL_SHADER_STORAGE_BUFFER, bufferSize, nullptr, GL_STREAM_DRAW);
+
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 	// Setting up FBO.
 	glGenFramebuffers(1, &m_viewport_fbo);
 	glGenFramebuffers(1, &m_albedo_fbo);
 	glGenFramebuffers(1, &m_ambient_fbo);
 	glGenFramebuffers(1, &m_occlusion_fbo);
+	glGenFramebuffers(1, &m_blur_fbo1);
+	glGenFramebuffers(1, &m_blur_fbo2);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, m_viewport_fbo);
 	glGenTextures(1, &m_viewportTexture);
@@ -125,6 +149,22 @@ bool Engine::Initialize() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_occlusionTexture, 0);
 
+	glBindFramebuffer(GL_FRAMEBUFFER, m_blur_fbo1);
+	glGenTextures(1, &m_blurTexture1);
+	glBindTexture(GL_TEXTURE_2D, m_blurTexture1);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (int)m_viewportSize.x / 2, (int)m_viewportSize.y / 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_blurTexture1, 0);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, m_blur_fbo2);
+	glGenTextures(1, &m_blurTexture2);
+	glBindTexture(GL_TEXTURE_2D, m_blurTexture2);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (int)m_viewportSize.x / 2, (int)m_viewportSize.y / 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_blurTexture2, 0);
+
 	// Render Buffer Objects
 	glBindFramebuffer(GL_FRAMEBUFFER, m_albedo_fbo);
 	glGenRenderbuffers(1, &m_albedo_rbo);
@@ -132,7 +172,7 @@ bool Engine::Initialize() {
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, (int)m_viewportSize.x, (int)m_viewportSize.y);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_albedo_rbo);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, m_occlusion_rbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, m_occlusion_fbo);
 	glGenRenderbuffers(1, &m_occlusion_rbo);
 	glBindRenderbuffer(GL_RENDERBUFFER, m_occlusion_rbo);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, (int)m_viewportSize.x, (int)m_viewportSize.y);
@@ -239,8 +279,8 @@ void Engine::ProcessInput() {
 							clickedEntity->isSelected = true;
 							clickedEntity->isBeingDragged = true;
 							m_selectedEntity = clickedEntity;
-							m_dragOffset.x = clickedEntity->bounds.position.x - viewportCoords.x;
-							m_dragOffset.y = clickedEntity->bounds.position.y - viewportCoords.y;
+							m_dragOffset.x = clickedEntity->GetPosition().x - viewportCoords.x;
+							m_dragOffset.y = clickedEntity->GetPosition().y - viewportCoords.y;
 						}
 						else {
 							for (Vortex::Entity* entity : m_entities) {
@@ -286,7 +326,7 @@ void Engine::ProcessInput() {
 			if (m_isDragging) {
 				if (m_selectedEntity != nullptr) {
 					Vortex::Vec2 viewportCoords = CoordsScreenToViewport(mousePos);
-					m_selectedEntity->bounds.position = viewportCoords + m_dragOffset;
+					m_selectedEntity->SetPosition(viewportCoords + m_dragOffset);
 				}
 				else {
 					// Dragging Viewport
@@ -299,18 +339,6 @@ void Engine::ProcessInput() {
 			if (event.key.key == SDLK_ESCAPE) {
 				m_tilingMode = false;
 				m_selectedTileLocation = "None";
-			}
-			else if (event.key.key == SDLK_W) {
-				m_currentViewMatrix = glm::translate(m_currentViewMatrix, glm::vec3(0.0f, -10.0f, 0.0f));
-			}
-			else if (event.key.key == SDLK_A) {
-				m_currentViewMatrix = glm::translate(m_currentViewMatrix, glm::vec3(-10.0f, 0.0f, 0.0f));
-			}
-			else if (event.key.key == SDLK_S) {
-				m_currentViewMatrix = glm::translate(m_currentViewMatrix, glm::vec3(0.0f, 10.0f, 0.0f));
-			}
-			else if (event.key.key == SDLK_D) {
-				m_currentViewMatrix = glm::translate(m_currentViewMatrix, glm::vec3(10.0f, 0.0f, 0.0f));
 			}
 			break;
 		case SDL_EVENT_QUIT:
@@ -327,12 +355,14 @@ void Engine::Update(float deltaTime) {
 	update_all_scripts_through_bridge();
 	phys_update_all_scripts_through_bridge(deltaTime);
 
-	for (Vortex::Entity* entity : m_entities) {
-		Vortex::Physics2D* physics2D = entity->GetComponent<Vortex::Physics2D>();
-		if (physics2D) {
-			physics2D->ApplyForce(gravityForce * physics2D->Mass());
+	if (m_gravity) {
+		for (Vortex::Entity* entity : m_entities) {
+			Vortex::Physics2D* physics2D = entity->GetComponent<Vortex::Physics2D>();
+			if (physics2D) {
+				physics2D->ApplyForce(gravityForce * physics2D->Mass());
+			}
+			entity->UpdateComponents(deltaTime);
 		}
-		entity->UpdateComponents(deltaTime);
 	}
 }
 
@@ -359,9 +389,10 @@ void Engine::Render() {
 
 	// Bind to Albedo FBO.
 	glBindFramebuffer(GL_FRAMEBUFFER, m_albedo_fbo);
-
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+	glEnable(GL_BLEND);
 
 	// Stencil Buffer stuff.
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
@@ -376,24 +407,72 @@ void Engine::Render() {
 
 	// Bind to Ambient FBO.
 	glBindFramebuffer(GL_FRAMEBUFFER, m_ambient_fbo);
-	glBlendFunc(GL_ONE, GL_ONE);
-
 	glClearColor(0.07f, 0.07f, 0.07f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
+
+	glDisable(GL_BLEND);
+	glDisable(GL_STENCIL_TEST);
+
+	int lightCount = 0;
+
+	m_lightData.clear();
+
+	// Collect Light Positions for SSBO.
+	for (Vortex::Entity* entity : m_entities) {
+		entity->RenderLights(m_lightData, lightCount);
+	}
+
+	size_t bufferSize = m_lightData.size() * sizeof(Vortex::Vec2);
+
+	// Activate Shader Program.
+	m_lightingShader->use();
+	GLint currentProgram;
+	glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
+	if (currentProgram != m_lightingShader->ID) {
+		std::cout << "Shader binding failed!" << std::endl;
+	}
+	m_lightingShader->setInt("lightCount", lightCount);
+	m_lightingShader->setFloat("shadowFalloff", m_shadowFalloff);
+	
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssbo);
+
+	// Upload the padded data
+	glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_lightData.size() * sizeof(Vortex::Vec2), m_lightData.data());
+	
+	GLenum err = glGetError();
+	while (err != GL_NO_ERROR) {
+		std::cerr << "OpenGL Error: " << err << std::endl;
+		err = glGetError();
+	}
+
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	m_lightingShader->use();
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, m_ssbo);
 
 	glActiveTexture(GL_TEXTURE5);
 	glBindTexture(GL_TEXTURE_2D, m_occlusionTexture);
 
-	// Draw to Ambient FBO
-	for (Vortex::Entity* entity : m_entities) {
-		entity->RenderLights(m_currentViewMatrix);
+	// Bind VAO, Draw, then Unbind.
+	glBindVertexArray(m_vao);
+
+	GLint boundBuffer;
+	glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, 0, &boundBuffer);
+	if (boundBuffer != (GLint)m_ssbo) {
+		std::cerr << "SSBO not bound to index 0!" << std::endl;
 	}
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
+
 
 	// Unbind FBO.
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	// Bind to Viewport FBO.
-	glBindFramebuffer(GL_FRAMEBUFFER, m_viewport_fbo);
+
+	// Shadow Blur Horizontal Pass
+	glBindFramebuffer(GL_FRAMEBUFFER, m_blur_fbo1);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
@@ -401,15 +480,63 @@ void Engine::Render() {
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_STENCIL_TEST);
 
+	glViewport(0, 0, m_viewportSize.x / 2, m_viewportSize.y / 2);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_ambientTexture);
+
+	m_gaussBlurShader->use();
+	m_gaussBlurShader->setSampler2D("u_image", 0);
+	m_gaussBlurShader->setVec2("u_resolution", m_viewportSize);
+	m_gaussBlurShader->setFloat("u_blurScale", m_blurScale);
+	// Horizontal Gaussian
+	m_gaussBlurShader->setVec2("u_dir", Vortex::Vec2(1.0, 0.0));
+	m_gaussBlurShader->setFloat("u_radius", m_viewportSize.x);
+
+	glBindVertexArray(m_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Shadow Blur Vertical Pass
+	glBindFramebuffer(GL_FRAMEBUFFER, m_blur_fbo2);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_blurTexture1);
+
+	m_gaussBlurShader->use();
+	m_gaussBlurShader->setSampler2D("u_image", 0);
+	m_gaussBlurShader->setVec2("u_resolution", m_viewportSize / 2);
+	m_gaussBlurShader->setFloat("u_blurScale", m_blurScale);
+	// Horizontal Gaussian
+	m_gaussBlurShader->setVec2("u_dir", Vortex::Vec2(0.0, 1.0));
+	m_gaussBlurShader->setFloat("u_radius", m_viewportSize.y / 2);
+
+	glBindVertexArray(m_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Bind to Viewport FBO.
+	glBindFramebuffer(GL_FRAMEBUFFER, m_viewport_fbo);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	glViewport(0, 0, m_viewportSize.x, m_viewportSize.y);
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, m_albedoTexture);
 
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, m_ambientTexture);
+	glBindTexture(GL_TEXTURE_2D, m_blurTexture2);
 
 	m_compositionShader->use();
-	m_compositionShader->setInt("albedoTextureID", 0);
-	m_compositionShader->setInt("ambientTextureID", 1);
+	m_compositionShader->setSampler2D("albedoTextureID", 0);
+	m_compositionShader->setSampler2D("ambientTextureID", 1);
 
 	glBindVertexArray(m_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -459,6 +586,10 @@ void Engine::ShowViewportWindow() {
 	if (ImGui::Button("Albedo")) m_chosenDisplayMode = DisplayMode::Albedo;
 	if (ImGui::Button("Ambient")) m_chosenDisplayMode = DisplayMode::Ambient;
 	if (ImGui::Button("Occlusion")) m_chosenDisplayMode = DisplayMode::Occlusion;
+	if (ImGui::Button("Blur Pass 1")) m_chosenDisplayMode = DisplayMode::BlurPass1;
+	if (ImGui::Button("Blur Pass 2")) m_chosenDisplayMode = DisplayMode::BlurPass2;
+	ImGui::DragFloat("Blur Scale", &m_blurScale, 0.1f, 0.1f, 10.0f);
+	ImGui::DragFloat("Shadow Falloff", &m_shadowFalloff, 0.1f, 0.1f, 10.0f);
 
 	// Get Window Size
 	ImVec2 windowSize = ImGui::GetContentRegionAvail();
@@ -501,6 +632,12 @@ void Engine::ShowViewportWindow() {
 		case DisplayMode::Occlusion:
 			chosenTexture = (ImTextureID)(intptr_t)m_occlusionTexture;
 			break;
+		case DisplayMode::BlurPass1:
+			chosenTexture = (ImTextureID)(intptr_t)m_blurTexture1;
+			break;
+		case DisplayMode::BlurPass2:
+			chosenTexture = (ImTextureID)(intptr_t)m_blurTexture2;
+			break;
 	}
 
 	ImGui::Image(chosenTexture, ImVec2(renderWidth, renderHeight), ImVec2(0, 1), ImVec2(1, 0));
@@ -540,7 +677,7 @@ void Engine::ShowEditorUI() {
 	}
 	if (ImGui::Button("Add Entity")) {
 		Vortex::Entity* newEntity = new Vortex::Entity();
-		newEntity->bounds.position = { 100.0f, 100.0f };
+		newEntity->SetPosition(100.0f, 100.0f);
 		newEntity->name = "New Entity";
 		m_entities.push_back(newEntity);
 	}
@@ -556,9 +693,33 @@ void Engine::ShowEditorUI() {
 	else {
 		ImGui::InputText("Entity Name", &m_selectedEntity->name);
 
+		if (ImGui::Button("Parent")) {
+			ImGui::OpenPopup("ParentPopup");
+		}
+
+		if (ImGui::BeginPopup("ParentPopup")) {
+			for (Vortex::Entity* entity : m_entities) {
+				if (entity != m_selectedEntity) {
+					if (ImGui::Selectable(entity->name.c_str())) {
+						if (m_selectedEntity->GetParent() != nullptr) {
+							m_selectedEntity->GetParent()->RemoveChild(entity);
+						}
+						m_selectedEntity->SetParent(entity);
+					}
+				}
+			}
+			ImGui::EndPopup();
+		}
+
 		ImGui::Text("Position");
-		ImGui::DragFloat("X", &m_selectedEntity->bounds.position.x, 1.0f, 1.0f);
-		ImGui::DragFloat("Y", &m_selectedEntity->bounds.position.y, 1.0f, 1.0f);
+		float tempX = m_selectedEntity->GetPosition().x;
+		float tempY = m_selectedEntity->GetPosition().y;
+		if (ImGui::DragFloat("X", &tempX, 1.0f, 1.0f)) {
+			m_selectedEntity->SetPosition(tempX, m_selectedEntity->GetPosition().y);
+		}
+		if (ImGui::DragFloat("Y", &tempY, 1.0f, 1.0f)) {
+			m_selectedEntity->SetPosition(m_selectedEntity->GetPosition().x, tempY);
+		}
 
 		ImGui::DragFloat("Width", &m_selectedEntity->bounds.w, 8.0f, 256.0f);
 		ImGui::DragFloat("Height", &m_selectedEntity->bounds.h, 8.0f, 256.0f);

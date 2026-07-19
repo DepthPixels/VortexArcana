@@ -8,6 +8,15 @@ namespace Vortex {
 		float x = 0.0f;
 		float y = 0.0f;
 
+		/*
+		Vec2(float X, float Y) {
+			x = X;
+			y = Y;
+		}
+
+		Vec2() {}
+		*/
+
 		// Scalar Operations
 		Vec2 operator*(float scalar) const {
 			return Vec2{
@@ -41,6 +50,16 @@ namespace Vortex {
 			x += other.x;
 			y += other.y;
 		}
+		Vec2 operator-(const Vec2& other) const {
+			return Vec2{
+				x - other.x,
+				y - other.y
+			};
+		}
+		void operator-=(const Vec2& other) {
+			x -= other.x;
+			y -= other.y;
+		}
 		Vec2 operator*(const Vec2& other) const {
 			return Vec2{
 				x * other.x,
@@ -59,12 +78,32 @@ namespace Vortex {
 		explicit operator glm::vec2() const {
 			return glm::vec2{ x, y };
 		}
+
+		// Other Functions
+		float dot(Vec2 other) {
+			return (x * other.x) + (y * other.y);
+		}
+
+		Vec2 normalized() {
+			float length = sqrt(pow(x, 2) + pow(y, 2));
+			if (length == 0.0f) return Vec2(0.0f, 0.0f);
+			return Vec2(x / length, y / length);
+		}
 	};
 
 	struct Vec3 {
 		float x = 0.0f;
 		float y = 0.0f;
 		float z = 0.0f;
+
+		Vec3(float X, float Y, float Z) {
+			x = X;
+			y = Y;
+			z = Z;
+		}
+
+		Vec3() {}
+
 		// Scalar Operations
 		Vec3 operator*(float scalar) const {
 			return Vec3{
@@ -172,6 +211,17 @@ namespace Vortex {
 		Vec2 position;
 		float w = 0.0f;
 		float h = 0.0f;
+		/*
+		Rect(float X, float Y, float W, float H) : position(X, Y) {
+			w = W;
+			h = H;
+		}
+
+		Rect(Vec2 Position, float W, float H) : position(Position) {
+			w = W;
+			h = H;
+		}
+		*/
 
 		bool isPosInRect(Vec2 pos) {
 			return (pos.x > position.x &&

@@ -17,9 +17,12 @@
 #include "Core/Utility/Shader.h"
 #include "Core/Utility/SceneUtility.h"
 #include "Core/Utility/ScriptingInterface.h"
+#include "Core/Utility/Collisions.h"
+#include "Core/Utility/Math.h"
 #include "Core/Components/SpriteRenderer2D.h"
 #include "Core/Components/Physics2D.h"
 #include "Core/Components/PointLight.h"
+#include "Core/Components/Rigidbody.h"
 
 enum class DisplayMode {
     Combined,
@@ -64,6 +67,7 @@ private:
     bool m_isOpen = false;
 	bool m_isRunning = false;
     bool m_gravity = true;
+    float m_bounciness = 1.0f;
     bool m_isDragging = false;
 	Vortex::Entity* m_selectedEntity = nullptr;
 	Vortex::Vec2 m_dragOffset = { 0.0f, 0.0f };

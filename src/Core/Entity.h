@@ -108,6 +108,10 @@ namespace Vortex {
 		Vec2 GetPosition() {
 			return bounds.position;
 		}
+
+		Vec2 GetBounds() {
+			return Vec2(this->bounds.w, this->bounds.h);
+		}
 		
 		int*& EntityID() { 
 			return entityID;

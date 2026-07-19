@@ -15,6 +15,7 @@ public class SonionScript : BaseEntity
 
     public override void PhysUpdate(float deltaTime)
     {
+
         Console.WriteLine("SonionScript PhysUpdate has run successfully. Ptr is " + _entityID);
     }
 

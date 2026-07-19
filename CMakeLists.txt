@@ -46,7 +46,7 @@ set(VORTEX_SOURCES
     external/glad/src/glad.c
     assets/shaders/TexFragment.glsl
     assets/shaders/TexVertex.glsl
- "src/Core/Components/SquareLight.h" "src/Core/Components/PointLight.cpp")
+ "src/Core/Components/PointLight.h" "src/Core/Components/PointLight.cpp" "src/Core/Utility/Collisions.h"  "src/Core/Components/Rigidbody.h" "src/Core/Components/Rigidbody.cpp")
 
 add_executable(VortexArcana ${VORTEX_SOURCES} ${IMGUI_SOURCES})
 

@@ -60,7 +60,7 @@ namespace ScriptEngine
         [UnmanagedCallersOnly(EntryPoint = "RunUpdate")]
         public static int RunUpdate()
         {
-            Console.WriteLine($"[C# Handler] Running Update() on all scripts");
+            //Console.WriteLine($"[C# Handler] Running Update() on all scripts");
 
             // Update all script behaviors
             foreach (BaseEntity? script in _engine?.CurrentInstances?.Values ?? Enumerable.Empty<BaseEntity?>())
@@ -74,7 +74,7 @@ namespace ScriptEngine
         [UnmanagedCallersOnly(EntryPoint = "RunPhysUpdate")]
         public static int RunPhysUpdate(float deltaTime)
         {
-            Console.WriteLine($"[C# Handler] Running Phys Update() on all scripts");
+            //Console.WriteLine($"[C# Handler] Running Phys Update() on all scripts");
 
             // Update all script behaviors
             foreach (BaseEntity? script in _engine?.CurrentInstances?.Values ?? Enumerable.Empty<BaseEntity?>())

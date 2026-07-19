@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include <iostream>
+#include <algorithm>
 
 
 Engine::Engine()
@@ -53,6 +54,7 @@ bool Engine::Initialize() {
 	// Initialize Bridge to .NET for Scripting.
 	init_bridge(STR("F:\\Cpp\\VortexArcana\\out\\build\\windows-vs2026\\Debug\\"));
 
+	/* Light Test Setup
 	Vortex::Entity* object1 = new Vortex::Entity();
 	object1->name = "Yehya Freshman Sprite";
 	object1->bounds = { 300.0f, 200.0f, 200.0f, 200.0f };
@@ -78,6 +80,39 @@ bool Engine::Initialize() {
 	Vortex::PointLight* ptlght2 = new Vortex::PointLight();
 	object3->AddComponent(ptlght2);
 	m_entities.push_back(object3);
+	*/
+
+	Vortex::Entity* object1 = new Vortex::Entity();
+	object1->name = "Box 1";
+	object1->bounds = { 100.0f, 100.0f, 200.0f, 200.0f };
+	Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D;
+	object1->AddComponent(spriteComponent);
+	spriteComponent->LoadSprite("assets/Circle.png", true);
+	Vortex::Physics2D* physics2D = new Vortex::Physics2D();
+	physics2D->Mass() = 1000.0f;
+	object1->AddComponent(physics2D);
+	Vortex::Rigidbody* rigidbody = new Vortex::Rigidbody();
+	object1->AddComponent(rigidbody);
+	rigidbody->Initialize(Vortex::CollisionShape::Circle);
+	rigidbody->collider->originOffset = { 100.0f, 100.0f };
+	reinterpret_cast<Vortex::CircleCollisionContainer*>(rigidbody->collider)->radius = 100.0f;
+	m_entities.push_back(object1);
+
+	Vortex::Entity* object2 = new Vortex::Entity();
+	object2->name = "Box 2";
+	object2->bounds = { 100.0f, 450.0f, 200.0f, 200.0f };
+	Vortex::SpriteRenderer2D* sprite2Component = new Vortex::SpriteRenderer2D;
+	object2->AddComponent(sprite2Component);
+	sprite2Component->LoadSprite("assets/Circle.png", true);
+	//Vortex::Physics2D* physics2D2 = new Vortex::Physics2D();
+	//physics2D2->Mass() = 1000.0f;
+	//object2->AddComponent(physics2D2);
+	Vortex::Rigidbody* rigidbody2 = new Vortex::Rigidbody();
+	object2->AddComponent(rigidbody2);
+	rigidbody2->Initialize(Vortex::CollisionShape::Circle);
+	rigidbody2->collider->originOffset = { 100.0f, 100.0f };
+	reinterpret_cast<Vortex::CircleCollisionContainer*>(rigidbody2->collider)->radius = 100.0f;
+	m_entities.push_back(object2);
 
 	// Camera Stuff
 	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
@@ -355,14 +390,95 @@ void Engine::Update(float deltaTime) {
 	update_all_scripts_through_bridge();
 	phys_update_all_scripts_through_bridge(deltaTime);
 
+	// Collisions
+	// Collisions
+	for (size_t i = 0; i < m_entities.size(); ++i) {
+		Vortex::Entity* entity = m_entities[i];
+		Vortex::Rigidbody* rigidbody = entity->GetComponent<Vortex::Rigidbody>();
+
+		if (rigidbody) {
+			for (size_t j = i + 1; j < m_entities.size(); ++j) {
+				Vortex::Entity* otherEntity = m_entities[j];
+
+				Vortex::Rigidbody* otherbody = otherEntity->GetComponent<Vortex::Rigidbody>();
+				if (otherbody) {
+					Vortex::CollisionManifold collisionData = rigidbody->checkCollision(otherbody);
+
+					if (collisionData.isColliding) {
+						std::cout << "Entity " << entity->name << " is colliding with Normal (" << collisionData.normal.x << ", " << collisionData.normal.y << ")" << std::endl;
+
+						Vortex::Physics2D* physA = entity->GetComponent<Vortex::Physics2D>();
+						Vortex::Physics2D* physB = otherEntity->GetComponent<Vortex::Physics2D>();
+
+						// Denominator
+						float invMassA = physA ? (1.0f / physA->Mass()) : 0.0f;
+						float invMassB = physB ? (1.0f / physB->Mass()) : 0.0f;
+						float totalInvMass = invMassA + invMassB;
+
+						if (totalInvMass <= 0.0f) continue; // Both are static
+
+						// fixing penetration
+						float percent = 0.8f;
+						float slop = 0.01f;
+						float correctionMag = (std::max)(collisionData.penetration - slop, 0.0f) / totalInvMass * percent;
+						Vortex::Vec2 correction = collisionData.normal * correctionMag;
+
+						if (physA) entity->SetPosition(entity->GetPosition() - (correction * invMassA));
+						if (physB) otherEntity->SetPosition(otherEntity->GetPosition() + (correction * invMassB));
+
+						// Impulse Resolution
+						if (physA && physB) {
+							std::cout << "Dynamic Collision!" << std::endl;
+							Vortex::Vec2 Vrel = physB->Velocity() - physA->Velocity();
+							float velAlongNormal = Vrel.dot(collisionData.normal);
+
+							if (velAlongNormal < 0) {
+								float j_impulse = -(1.0f + m_bounciness) * velAlongNormal;
+								j_impulse /= totalInvMass;
+
+								Vortex::Vec2 impulse = collisionData.normal * j_impulse;
+
+								physA->Velocity() -= (impulse * invMassA);
+								physB->Velocity() += (impulse * invMassB);
+							}
+						}
+						else if (physA && !physB) {
+							std::cout << "Static Collision!" << std::endl;
+							float velAlongNormal = physA->Velocity().dot(collisionData.normal);
+							if (velAlongNormal > 0) {
+								float j_impulse = -(1.0f + m_bounciness) * velAlongNormal;
+								j_impulse /= invMassA;
+								physA->Velocity() += (collisionData.normal * j_impulse * invMassA);
+							}
+						}
+						else if (!physA && physB) {
+							std::cout << "Static Collision!" << std::endl;
+							float velAlongNormal = physB->Velocity().dot(collisionData.normal);
+							if (velAlongNormal < 0) {
+								float j_impulse = -(1.0f + m_bounciness) * velAlongNormal;
+								j_impulse /= invMassB;
+								physB->Velocity() += (collisionData.normal * j_impulse * invMassB);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// gravity if enabled
 	if (m_gravity) {
 		for (Vortex::Entity* entity : m_entities) {
 			Vortex::Physics2D* physics2D = entity->GetComponent<Vortex::Physics2D>();
 			if (physics2D) {
 				physics2D->ApplyForce(gravityForce * physics2D->Mass());
 			}
-			entity->UpdateComponents(deltaTime);
 		}
+	}
+
+	// update components
+	for (Vortex::Entity* entity : m_entities) {
+		entity->UpdateComponents(deltaTime);
 	}
 }
 
@@ -752,6 +868,36 @@ void Engine::ShowEditorUI() {
 					ImGui::DragFloat("Radius", &pointlight->radius);
 					ImGui::ColorEdit3("Color", (float*)&pointlight->color);
 				}
+				Vortex::Rigidbody* rigid = dynamic_cast<Vortex::Rigidbody*>(component);
+				if (rigid) {
+					ImGui::Text("- Rigidbody");
+					Vortex::CollisionShape colliderShape = rigid->collider->GetCollisionShapeType();
+					if (ImGui::Button("Switch to Type Rectangle")) {
+						if (colliderShape != Vortex::CollisionShape::Rectangle) {
+							delete rigid->collider;
+							rigid->Initialize(Vortex::CollisionShape::Rectangle);
+						}
+					}
+					if (ImGui::Button("Switch to Type Circle")) {
+						if (colliderShape != Vortex::CollisionShape::Circle) {
+							delete rigid->collider;
+							rigid->Initialize(Vortex::CollisionShape::Circle);
+						}
+					}
+					switch (colliderShape) {
+						case Vortex::CollisionShape::Rectangle:
+							ImGui::DragFloat("Position Offset X", &reinterpret_cast<Vortex::RectangleCollisionContainer*>(rigid->collider)->originOffset.x);
+							ImGui::DragFloat("Position Offset Y", &reinterpret_cast<Vortex::RectangleCollisionContainer*>(rigid->collider)->originOffset.y);
+							ImGui::DragFloat("Collider Width", &reinterpret_cast<Vortex::RectangleCollisionContainer*>(rigid->collider)->bounds.x);
+							ImGui::DragFloat("Collider Height", &reinterpret_cast<Vortex::RectangleCollisionContainer*>(rigid->collider)->bounds.y);
+							break;
+						case Vortex::CollisionShape::Circle:
+							ImGui::DragFloat("Position Offset X", &reinterpret_cast<Vortex::CircleCollisionContainer*>(rigid->collider)->originOffset.x);
+							ImGui::DragFloat("Position Offset Y", &reinterpret_cast<Vortex::CircleCollisionContainer*>(rigid->collider)->originOffset.y);
+							ImGui::DragFloat("Collider Radius", &reinterpret_cast<Vortex::CircleCollisionContainer*>(rigid->collider)->radius);
+							break;
+					}
+				}
 			}
 		}
 
@@ -775,6 +921,12 @@ void Engine::ShowEditorUI() {
 				Vortex::PointLight* pointLightComponent = new Vortex::PointLight();
 				m_selectedEntity->AddComponent(pointLightComponent);
 				std::cout << "Added PointLight Component to " << m_selectedEntity->name << std::endl;
+			}
+			if (ImGui::Selectable("Rigidbody")) {
+				Vortex::Rigidbody* rigidbodyComponent = new Vortex::Rigidbody();
+				m_selectedEntity->AddComponent(rigidbodyComponent);
+				rigidbodyComponent->Initialize(Vortex::CollisionShape::Rectangle);
+				std::cout << "Added Rigidbody Component to " << m_selectedEntity->name << std::endl;
 			}
 			ImGui::EndPopup();
 		}

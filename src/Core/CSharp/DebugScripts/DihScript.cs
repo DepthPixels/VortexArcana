@@ -11,20 +11,20 @@ public class DihScript : BaseEntity
     {
         Console.WriteLine("DihScript Awake has run successfully. Ptr is " + _entityID);
         phys = GetComponent<Physics2D>();
-        phys.Velocity = new Vector2(100, 0);
+        phys.Velocity = new Vector2(50, 0);
         Console.WriteLine("Physics component found and velocity set to " + phys.Velocity);
     }
 
     public override void Update()
     {
-        Console.WriteLine("DihScript Update has run successfully. Ptr is " + _entityID);
+        //Console.WriteLine("DihScript Update has run successfully. Ptr is " + _entityID);
     }
 
     public override void PhysUpdate(float deltaTime)
     {
-        Console.WriteLine("DihScript PhysUpdate has run successfully. Ptr is " + _entityID);
+        //Console.WriteLine("DihScript PhysUpdate has run successfully. Ptr is " + _entityID);
         phys.UpdatePhysics(deltaTime);
-        Console.WriteLine("Physics!");
+        //Console.WriteLine("Physics!");
     }
 
     public override void Decimate()

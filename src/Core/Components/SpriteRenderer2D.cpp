@@ -2,6 +2,7 @@
 #include "SpriteRenderer2D.h"
 #include <glad/glad.h>
 #include <iostream>
+#include "Core/Utility/Collisions.h"
 
 using namespace Vortex;
 
@@ -165,4 +166,42 @@ void SpriteRenderer2D::DrawOcclusion(Vortex::Vec2 position, Vortex::Vec2 size, f
 	glBindVertexArray(this->quadVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glBindVertexArray(0);
+}
+
+void SpriteRenderer2D::BakeOcclusion(StaticOcclusionCollisionContainer* container) {
+	unsigned int fbo;
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+	// Bind the utility-generated texture ID
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, container->occlusionTexture.ID, 0);
+
+	glViewport(0, 0, container->bounds.x, container->bounds.y);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	this->occlusionShader->use();
+
+	// 1.0f model matrix is small quad, needs to be scaled to tex size.
+	glm::mat4 model = glm::mat4(1.0f);
+	model = glm::scale(model, glm::vec3(container->bounds.x, container->bounds.y, 1.0f));
+	this->occlusionShader->setMat4("model", model);
+
+	// ortho projection for tex bounds.
+	glm::mat4 projection = glm::ortho(0.0f, container->bounds.x, container->bounds.y, 0.0f, -1.0f, 50.0f);
+	this->occlusionShader->setMat4("projection", projection);
+
+	this->occlusionShader->setMat4("view", glm::mat4(1.0f));
+
+	// Bind Texture.
+	glActiveTexture(GL_TEXTURE0);
+	this->texture.Bind();
+
+	// Bind VAO, Draw, then Unbind.
+	glBindVertexArray(this->quadVAO);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glDeleteFramebuffers(1, &fbo);
 }

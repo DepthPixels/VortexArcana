@@ -15,6 +15,7 @@ namespace Vortex {
 		float falloff = 2.0f;
 		float radius = 400.0f;
 		bool active = true;
+		Vec2 originOffset = { 0.0f, 0.0f };
 
 		~PointLight();
 
@@ -22,7 +23,7 @@ namespace Vortex {
 
 		void RenderLights(std::vector<float>& lightData, int& lightIndex) {
 			if (active) {
-				Illuminate(owner->bounds.position, lightData, lightIndex);
+				Illuminate(owner->bounds.position + originOffset, lightData, lightIndex);
 			}
 		}
 

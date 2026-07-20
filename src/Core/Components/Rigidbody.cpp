@@ -6,12 +6,14 @@ using namespace Vortex;
 void Rigidbody::Initialize(CollisionShape shape) {
 	switch (shape) {
 		case CollisionShape::Rectangle:
-			std::cout << "Owner is " << owner << std::endl;
 			collider = new RectangleCollisionContainer(owner, owner->GetBounds());
 			break;
 		case CollisionShape::Circle:
 			collider = new CircleCollisionContainer(owner, 50.0f);
 			break;
+        case CollisionShape::StaticOcclusion:
+            collider = new StaticOcclusionCollisionContainer(owner, owner->GetBounds());
+            break;
 		default:
 			// Redundant
 			collider = new RectangleCollisionContainer(owner, owner->GetBounds());
@@ -38,6 +40,22 @@ Vortex::CollisionManifold Rigidbody::checkCollision(Rigidbody* other) {
     // Rectangle vs Circle
     else if (thisShape == CollisionShape::Rectangle && otherShape == CollisionShape::Circle) {
         return checkRectangleCircle(other);
+    }
+    // Circle vs Occlusion
+    else if (thisShape == CollisionShape::Circle && otherShape == CollisionShape::StaticOcclusion) {
+        return checkCircleOcclusion(other);
+    }
+    // Occlusion vs Circle
+    else if (thisShape == CollisionShape::StaticOcclusion && otherShape == CollisionShape::Circle) {
+        return checkOcclusionCircle(other);
+    }
+    // Rectangle vs Occlusion
+    else if (thisShape == CollisionShape::Rectangle && otherShape == CollisionShape::StaticOcclusion) {
+        return checkRectangleOcclusion(other);
+    }
+    // Occlusion vs Rectangle
+    else if (thisShape == CollisionShape::StaticOcclusion && otherShape == CollisionShape::Rectangle) {
+        return checkOcclusionRectangle(other);
     }
 
     return CollisionManifold();
@@ -144,7 +162,7 @@ Vortex::CollisionManifold Rigidbody::checkCircleRectangle(Rigidbody* other) {
     if (distance < colA->radius) {
         manifold.isColliding = true;
         manifold.penetration = colA->radius - distance;
-        manifold.normal = (aCenter - closestPoint).normalized();
+        manifold.normal = (closestPoint - aCenter).normalized();
     }
 
     return manifold;
@@ -176,8 +194,154 @@ Vortex::CollisionManifold Rigidbody::checkRectangleCircle(Rigidbody* other) {
     if (distance < colA->radius) {
         manifold.isColliding = true;
         manifold.penetration = colA->radius - distance;
-        manifold.normal = (closestPoint - aCenter).normalized();
+        manifold.normal = (aCenter - closestPoint).normalized();
     }
 
+    return manifold;
+}
+
+Vortex::CollisionManifold Rigidbody::checkCircleOcclusion(Rigidbody* other) {
+    Vortex::CollisionManifold manifold;
+    CircleCollisionContainer* circ = reinterpret_cast<CircleCollisionContainer*>(collider);
+    StaticOcclusionCollisionContainer* occ = reinterpret_cast<StaticOcclusionCollisionContainer*>(other->collider);
+
+    // If the buffer hasn't been loaded from the GPU yet, abort to prevent crash
+    if (occ->pixelBuffer.empty()) return manifold;
+
+    Vec2 circCenter = owner->GetPosition() + circ->originOffset;
+    Vec2 occPos = other->owner->GetPosition();
+
+    // Transform circle center into the occlusion mask's local space
+    Vec2 localPos = circCenter - occPos;
+
+    int width = (int)occ->bounds.x;
+    int height = (int)occ->bounds.y;
+
+    // AABB check to check only pixel within circle's radius
+    int minX = std::max(0, (int)(localPos.x - circ->radius));
+    int maxX = std::min(width, (int)(localPos.x + circ->radius));
+    int minY = std::max(0, (int)(localPos.y - circ->radius));
+    int maxY = std::min(height, (int)(localPos.y + circ->radius));
+
+    Vec2 totalNormal(0.0f, 0.0f);
+    float maxPenetration = 0.0f;
+    int hitCount = 0;
+
+    for (int y = minY; y < maxY; ++y) {
+        for (int x = minX; x < maxX; ++x) {
+            // Flip back from OpenGL.
+            int flippedY = (height - 1) - y;
+
+            if (occ->pixelBuffer[flippedY * width + x] > 0) {
+                // Vector pointing FROM Circle TO Pixel
+                float dx = x - localPos.x;
+                float dy = y - localPos.y;
+                float dist = std::sqrt(dx * dx + dy * dy);
+
+                if (dist < circ->radius) {
+                    manifold.isColliding = true;
+                    hitCount++;
+
+                    float pen = circ->radius - dist;
+                    if (pen > maxPenetration) maxPenetration = pen;
+
+                    if (dist > 0.0001f) {
+                        totalNormal.x += (dx / dist);
+                        totalNormal.y += (dy / dist);
+                    }
+                }
+            }
+        }
+    }
+
+    if (manifold.isColliding && hitCount > 0) {
+        manifold.penetration = maxPenetration;
+        manifold.normal = totalNormal.normalized();
+    }
+
+    return manifold;
+}
+
+Vortex::CollisionManifold Rigidbody::checkOcclusionCircle(Rigidbody* other) {
+    // Flip normal vector.
+    Vortex::CollisionManifold manifold = other->checkCircleOcclusion(this);
+    if (manifold.isColliding) {
+        manifold.normal = Vec2(manifold.normal.x * -1.0f, manifold.normal.y * -1.0f);
+    }
+    return manifold;
+}
+
+Vortex::CollisionManifold Rigidbody::checkRectangleOcclusion(Rigidbody* other) {
+    Vortex::CollisionManifold manifold;
+    RectangleCollisionContainer* rect = reinterpret_cast<RectangleCollisionContainer*>(collider);
+    StaticOcclusionCollisionContainer* occ = reinterpret_cast<StaticOcclusionCollisionContainer*>(other->collider);
+
+    // If the buffer hasn't been loaded from the GPU yet, abort to prevent crash
+    if (occ->pixelBuffer.empty()) return manifold;
+
+    // Rect AABB check.
+    Vec2 rectHalfExtents = rect->bounds / 2.0f;
+    Vec2 rectCenter = owner->GetPosition() + rect->originOffset + rectHalfExtents;
+    Vec2 occPos = other->owner->GetPosition();
+
+    Vec2 localCenter = rectCenter - occPos;
+
+    int width = (int)occ->bounds.x;
+    int height = (int)occ->bounds.y;
+
+    int minX = std::max(0, (int)(localCenter.x - rectHalfExtents.x));
+    int maxX = std::min(width, (int)(localCenter.x + rectHalfExtents.x));
+    int minY = std::max(0, (int)(localCenter.y - rectHalfExtents.y));
+    int maxY = std::min(height, (int)(localCenter.y + rectHalfExtents.y));
+
+    Vec2 totalNormal(0.0f, 0.0f);
+    float maxPenetration = 0.0f;
+    int hitCount = 0;
+
+    for (int y = minY; y < maxY; ++y) {
+        for (int x = minX; x < maxX; ++x) {
+            // Flip back from OpenGL.
+            int flippedY = (height - 1) - y;
+
+            if (occ->pixelBuffer[flippedY * width + x] > 0) {
+                manifold.isColliding = true;
+                hitCount++;
+
+                // Find the distance from this pixel to all 4 edges of the rectangle
+                float distLeft = x - (localCenter.x - rectHalfExtents.x);
+                float distRight = (localCenter.x + rectHalfExtents.x) - x;
+                float distTop = y - (localCenter.y - rectHalfExtents.y);
+                float distBottom = (localCenter.y + rectHalfExtents.y) - y;
+
+                // The smallest distance shows which edge the pixel penetrated
+                float minPen = std::min({ distLeft, distRight, distTop, distBottom });
+
+                if (minPen > maxPenetration) {
+                    maxPenetration = minPen;
+                }
+
+                // Add to the average normal pointing FROM the Rectangle TO the pixel
+                if (minPen == distLeft) totalNormal.x -= 1.0f;
+                else if (minPen == distRight) totalNormal.x += 1.0f;
+                else if (minPen == distTop) totalNormal.y -= 1.0f;
+                else if (minPen == distBottom) totalNormal.y += 1.0f;
+            }
+        }
+    }
+
+    if (manifold.isColliding && hitCount > 0) {
+        manifold.penetration = maxPenetration;
+        manifold.normal = totalNormal.normalized();
+    }
+
+    return manifold;
+}
+
+Vortex::CollisionManifold Rigidbody::checkOcclusionRectangle(Rigidbody* other) {
+    // Flip normal
+    Vortex::CollisionManifold manifold = other->checkRectangleOcclusion(this);
+    if (manifold.isColliding) {
+        manifold.normal = Vec2(manifold.normal.x * -1.0f, manifold.normal.y * -1.0f);
+    }
     return manifold;
 }

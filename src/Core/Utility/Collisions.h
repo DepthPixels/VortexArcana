@@ -2,6 +2,7 @@
 
 #include "Core/Utility/Math.h"
 #include "Core/Utility/Textures.h"
+#include "Core/Components/SpriteRenderer2D.h"
 
 namespace Vortex {
 	class Entity;
@@ -60,6 +61,7 @@ namespace Vortex {
 	public:
 		Vortex::Vec2 bounds;
 		Texture2D occlusionTexture;
+		std::vector<unsigned char> pixelBuffer;
 
 		StaticOcclusionCollisionContainer(Entity* owner_ptr, Vortex::Vec2 init_bounds) {
 			owner = owner_ptr;
@@ -68,6 +70,20 @@ namespace Vortex {
 			occlusionTexture.internalFormat = GL_R8;
 			occlusionTexture.imageFormat = GL_RED;
 			occlusionTexture.Generate(bounds.x, bounds.y, nullptr);
+		}
+
+		void BakeCollisionMask() {
+			SpriteRenderer2D* spriteRenderer = owner->GetComponent<SpriteRenderer2D>();
+			if (spriteRenderer) {
+				spriteRenderer->BakeOcclusion(this);
+			}
+		}
+
+		void LoadBufferFromTexture() {
+			pixelBuffer.resize(bounds.x * bounds.y);
+			glBindTexture(GL_TEXTURE_2D, occlusionTexture.ID);
+			// Download the texture data back to CPU
+			glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, pixelBuffer.data());
 		}
 
 		CollisionShape GetCollisionShapeType() override {

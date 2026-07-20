@@ -44,6 +44,7 @@ public:
 
 private:
     void ProcessInput();
+    void Awake();
     void Update(float deltaTime);
     void ShowViewportWindow();
     void ShowEditorUI();
@@ -66,6 +67,7 @@ private:
     std::string currentScene = "Default Scene";
     bool m_isOpen = false;
 	bool m_isRunning = false;
+    bool m_viewportOverride = false;
     bool m_gravity = true;
     float m_bounciness = 1.0f;
     bool m_isDragging = false;

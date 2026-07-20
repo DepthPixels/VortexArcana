@@ -9,6 +9,8 @@
 #include "Core/Utility/Textures.h"
 
 namespace Vortex {
+	class StaticOcclusionCollisionContainer;
+
 	class SpriteRenderer2D : public Component {
 	public:
 		SpriteRenderer2D(Shader* shader = nullptr);
@@ -23,6 +25,7 @@ namespace Vortex {
 
 		void DrawSprite(Vortex::Vec2 position, Vortex::Vec2 size, float rotation, Vortex::Vec3 color, glm::mat4 viewMatrix);
 		void DrawOcclusion(Vortex::Vec2 position, Vortex::Vec2 size, float rotation, glm::mat4 viewMatrix);
+		void BakeOcclusion(StaticOcclusionCollisionContainer* container);
 
 		void Render(glm::mat4 viewMatrix) override {
 			if (spriteAssigned) {

@@ -10,9 +10,9 @@ vec4 pixelColor;
 void main() {
 	pixelColor = texture(texture1, TexCoord);
 
-	if (pixelColor.w > 0.0f) {
-		FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-	} else {
-		FragColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	if (pixelColor.a < 0.1) {
+		discard;
 	}
+
+	FragColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 }

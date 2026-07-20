@@ -1,6 +1,7 @@
 #include "Engine.h"
 #include <iostream>
 #include <algorithm>
+#include <utility>
 
 
 Engine::Engine()
@@ -100,18 +101,18 @@ bool Engine::Initialize() {
 
 	Vortex::Entity* object2 = new Vortex::Entity();
 	object2->name = "Box 2";
-	object2->bounds = { 100.0f, 450.0f, 200.0f, 200.0f };
+	object2->bounds = { 100.0f, 350.0f, 200.0f, 200.0f };
 	Vortex::SpriteRenderer2D* sprite2Component = new Vortex::SpriteRenderer2D;
 	object2->AddComponent(sprite2Component);
-	sprite2Component->LoadSprite("assets/Circle.png", true);
+	sprite2Component->LoadSprite("assets/Slope.png", true);
 	//Vortex::Physics2D* physics2D2 = new Vortex::Physics2D();
 	//physics2D2->Mass() = 1000.0f;
 	//object2->AddComponent(physics2D2);
 	Vortex::Rigidbody* rigidbody2 = new Vortex::Rigidbody();
 	object2->AddComponent(rigidbody2);
-	rigidbody2->Initialize(Vortex::CollisionShape::Circle);
-	rigidbody2->collider->originOffset = { 100.0f, 100.0f };
-	reinterpret_cast<Vortex::CircleCollisionContainer*>(rigidbody2->collider)->radius = 100.0f;
+	rigidbody2->Initialize(Vortex::CollisionShape::StaticOcclusion);
+	reinterpret_cast<Vortex::StaticOcclusionCollisionContainer*>(rigidbody2->collider)->BakeCollisionMask();
+	reinterpret_cast<Vortex::StaticOcclusionCollisionContainer*>(rigidbody2->collider)->LoadBufferFromTexture();
 	m_entities.push_back(object2);
 
 	// Camera Stuff
@@ -272,6 +273,8 @@ bool Engine::Initialize() {
 void Engine::Run() {
 	uint64_t lastTime = SDL_GetTicks();
 
+	bool prevRunning = false;
+
 	while (m_isOpen) {
 		// Delta Time Calculation.
 		uint64_t currentTime = SDL_GetTicks();
@@ -280,7 +283,12 @@ void Engine::Run() {
 
 		// Main Loop
 		ProcessInput();
+
+		if (m_isRunning && prevRunning) Awake();
 		if (m_isRunning) Update(deltaTime);
+
+		prevRunning = m_isRunning;
+
 		Render();
 	}
 }
@@ -383,6 +391,18 @@ void Engine::ProcessInput() {
 	}
 }
 
+void Engine::Awake() {
+	for (Vortex::Entity* entity : m_entities) {
+		Vortex::Rigidbody* rigidbody = entity->GetComponent<Vortex::Rigidbody>();
+
+		if (rigidbody && rigidbody->collider->GetCollisionShapeType() == Vortex::CollisionShape::StaticOcclusion) {
+			Vortex::StaticOcclusionCollisionContainer* collider = reinterpret_cast<Vortex::StaticOcclusionCollisionContainer*>(rigidbody->collider);
+			collider->BakeCollisionMask();
+			collider->LoadBufferFromTexture();
+		}
+	}
+}
+
 void Engine::Update(float deltaTime) {
 	// Physics stuff.
 	Vortex::Vec2 gravityForce = m_gravityDirection * m_gravityStrength * m_meterToPixel;
@@ -390,7 +410,6 @@ void Engine::Update(float deltaTime) {
 	update_all_scripts_through_bridge();
 	phys_update_all_scripts_through_bridge(deltaTime);
 
-	// Collisions
 	// Collisions
 	for (size_t i = 0; i < m_entities.size(); ++i) {
 		Vortex::Entity* entity = m_entities[i];
@@ -405,7 +424,6 @@ void Engine::Update(float deltaTime) {
 					Vortex::CollisionManifold collisionData = rigidbody->checkCollision(otherbody);
 
 					if (collisionData.isColliding) {
-						std::cout << "Entity " << entity->name << " is colliding with Normal (" << collisionData.normal.x << ", " << collisionData.normal.y << ")" << std::endl;
 
 						Vortex::Physics2D* physA = entity->GetComponent<Vortex::Physics2D>();
 						Vortex::Physics2D* physB = otherEntity->GetComponent<Vortex::Physics2D>();
@@ -867,6 +885,8 @@ void Engine::ShowEditorUI() {
 					ImGui::DragFloat("Falloff", &pointlight->falloff);
 					ImGui::DragFloat("Radius", &pointlight->radius);
 					ImGui::ColorEdit3("Color", (float*)&pointlight->color);
+					ImGui::DragFloat("Position Offset X#lightX", &pointlight->originOffset.x);
+					ImGui::DragFloat("Position Offset Y#lightY", &pointlight->originOffset.y);
 				}
 				Vortex::Rigidbody* rigid = dynamic_cast<Vortex::Rigidbody*>(component);
 				if (rigid) {
@@ -884,17 +904,32 @@ void Engine::ShowEditorUI() {
 							rigid->Initialize(Vortex::CollisionShape::Circle);
 						}
 					}
+					if (ImGui::Button("Switch to Type Static Occlusion")) {
+						if (!physics && sprite) {
+							delete rigid->collider;
+							rigid->Initialize(Vortex::CollisionShape::StaticOcclusion);
+						}
+						else {
+							std::cout << "Cannot switch to type Static Occlusion, Physics2D present or SpriteRenderer2D absent." << std::endl;
+						}
+					}
 					switch (colliderShape) {
 						case Vortex::CollisionShape::Rectangle:
-							ImGui::DragFloat("Position Offset X", &reinterpret_cast<Vortex::RectangleCollisionContainer*>(rigid->collider)->originOffset.x);
-							ImGui::DragFloat("Position Offset Y", &reinterpret_cast<Vortex::RectangleCollisionContainer*>(rigid->collider)->originOffset.y);
+							ImGui::DragFloat("Position Offset X#colliderX", &reinterpret_cast<Vortex::RectangleCollisionContainer*>(rigid->collider)->originOffset.x);
+							ImGui::DragFloat("Position Offset Y#colliderY", &reinterpret_cast<Vortex::RectangleCollisionContainer*>(rigid->collider)->originOffset.y);
 							ImGui::DragFloat("Collider Width", &reinterpret_cast<Vortex::RectangleCollisionContainer*>(rigid->collider)->bounds.x);
 							ImGui::DragFloat("Collider Height", &reinterpret_cast<Vortex::RectangleCollisionContainer*>(rigid->collider)->bounds.y);
 							break;
 						case Vortex::CollisionShape::Circle:
-							ImGui::DragFloat("Position Offset X", &reinterpret_cast<Vortex::CircleCollisionContainer*>(rigid->collider)->originOffset.x);
-							ImGui::DragFloat("Position Offset Y", &reinterpret_cast<Vortex::CircleCollisionContainer*>(rigid->collider)->originOffset.y);
+							ImGui::DragFloat("Position Offset X#colliderX", &reinterpret_cast<Vortex::CircleCollisionContainer*>(rigid->collider)->originOffset.x);
+							ImGui::DragFloat("Position Offset Y#colliderY", &reinterpret_cast<Vortex::CircleCollisionContainer*>(rigid->collider)->originOffset.y);
 							ImGui::DragFloat("Collider Radius", &reinterpret_cast<Vortex::CircleCollisionContainer*>(rigid->collider)->radius);
+							break;
+						case Vortex::CollisionShape::StaticOcclusion:
+							Vortex::StaticOcclusionCollisionContainer* container = reinterpret_cast<Vortex::StaticOcclusionCollisionContainer*>(rigid->collider);
+							ImGui::DragFloat("Position Offset X#colliderX", &container->originOffset.x);
+							ImGui::DragFloat("Position Offset Y#colliderY", &container->originOffset.y);
+							ImGui::Image((ImTextureID)(intptr_t)container->occlusionTexture.ID, ImVec2(container->bounds.x, container->bounds.y), ImVec2(0, 1), ImVec2(1, 0));
 							break;
 					}
 				}

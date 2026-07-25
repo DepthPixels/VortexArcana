@@ -56,6 +56,7 @@ namespace ScriptHost
             componentRegistry = new Dictionary<Type, int>();
             componentRegistry[typeof(SpriteRenderer2D)] = 1;
             componentRegistry[typeof(Physics2D)] = 2;
+            componentRegistry[typeof(PointLight)] = 3;
 
             ComponentRegistryGateway.LookupId = this.GetComponentID;
         }

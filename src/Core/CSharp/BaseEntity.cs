@@ -248,13 +248,119 @@ namespace VortexArcana {
         }
     }
 
+    public partial class PointLight : BaseComponent
+    {
+        private IntPtr _componentPtr;
+        private IntPtr _lightPropPtr;
+
+        public PointLight(IntPtr ComponentPtr, IntPtr EntityID) : base(EntityID)
+        {
+            _componentPtr = ComponentPtr;
+            _lightPropPtr = ComponentPtr + BridgeAPI._Engine_PointLightOffset;
+        }
+
+        public Vector3 Color
+        {
+            get
+            {
+                PointLightProperties properties = Marshal.PtrToStructure<PointLightProperties>(_lightPropPtr);
+                return properties.color;
+            }
+            set
+            {
+                PointLightProperties properties = Marshal.PtrToStructure<PointLightProperties>(_lightPropPtr);
+                properties.color = value;
+                Marshal.StructureToPtr(properties, _lightPropPtr, false);
+            }
+        }
+
+        public float Brightness
+        {
+            get
+            {
+                PointLightProperties properties = Marshal.PtrToStructure<PointLightProperties>(_lightPropPtr);
+                return properties.brightness;
+            }
+            set
+            {
+                PointLightProperties properties = Marshal.PtrToStructure<PointLightProperties>(_lightPropPtr);
+                properties.brightness = value;
+                Marshal.StructureToPtr(properties, _lightPropPtr, false);
+            }
+        }
+
+        public float Falloff
+        {
+            get
+            {
+                PointLightProperties properties = Marshal.PtrToStructure<PointLightProperties>(_lightPropPtr);
+                return properties.falloff;
+            }
+            set
+            {
+                PointLightProperties properties = Marshal.PtrToStructure<PointLightProperties>(_lightPropPtr);
+                properties.falloff = value;
+                Marshal.StructureToPtr(properties, _lightPropPtr, false);
+            }
+        }
+
+        public float Radius
+        {
+            get
+            {
+                PointLightProperties properties = Marshal.PtrToStructure<PointLightProperties>(_lightPropPtr);
+                return properties.radius;
+            }
+            set
+            {
+                PointLightProperties properties = Marshal.PtrToStructure<PointLightProperties>(_lightPropPtr);
+                properties.radius = value;
+                Marshal.StructureToPtr(properties, _lightPropPtr, false);
+            }
+        }
+
+        public Vector2 OriginOffset
+        {
+            get
+            {
+                PointLightProperties properties = Marshal.PtrToStructure<PointLightProperties>(_lightPropPtr);
+                return properties.originOffset;
+            }
+            set
+            {
+                PointLightProperties properties = Marshal.PtrToStructure<PointLightProperties>(_lightPropPtr);
+                properties.originOffset = value;
+                Marshal.StructureToPtr(properties, _lightPropPtr, false);
+            }
+        }
+
+        public bool Active
+        {
+            get
+            {
+                PointLightProperties properties = Marshal.PtrToStructure<PointLightProperties>(_lightPropPtr);
+                return properties.active;
+            }
+            set
+            {
+                PointLightProperties properties = Marshal.PtrToStructure<PointLightProperties>(_lightPropPtr);
+                properties.active = value;
+                Marshal.StructureToPtr(properties, _lightPropPtr, false);
+            }
+        }
+    }
+
     [StructLayout(LayoutKind.Explicit)]
     internal struct TransformComponent
     {
         [FieldOffset(0)]
         public Vector2 position;
         [FieldOffset(8)]
-        public float Width, Height, Rotation;
+        public float Width;
+        [FieldOffset(12)]
+        public float Height;
+        [FieldOffset(16)]
+        public float Rotation;
     }
 
     [StructLayout(LayoutKind.Explicit)]
@@ -266,6 +372,23 @@ namespace VortexArcana {
         public Vector2 Acceleration;
         [FieldOffset(24)]
         public float mass;
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    internal struct PointLightProperties
+    {
+        [FieldOffset(0)]
+        public Vector3 color;
+        [FieldOffset(12)]
+        public float brightness;
+        [FieldOffset(16)]
+        public float falloff;
+        [FieldOffset(20)]
+        public float radius;
+        [FieldOffset(24)]
+        public Vector2 originOffset;
+        [FieldOffset(32)]
+        public bool active;
     }
 
     [StructLayout(LayoutKind.Explicit)]

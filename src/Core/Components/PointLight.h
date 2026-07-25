@@ -14,8 +14,8 @@ namespace Vortex {
 		float brightness = 0.9f;
 		float falloff = 2.0f;
 		float radius = 400.0f;
-		bool active = true;
 		Vec2 originOffset = { 0.0f, 0.0f };
+		bool active = true;
 
 		~PointLight();
 

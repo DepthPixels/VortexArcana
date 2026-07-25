@@ -68,8 +68,8 @@ private:
     bool m_isOpen = false;
 	bool m_isRunning = false;
     bool m_viewportOverride = false;
-    bool m_gravity = true;
-    float m_bounciness = 1.0f;
+    bool m_gravity = false;
+    float m_bounciness = 0.8f;
     bool m_isDragging = false;
 	Vortex::Entity* m_selectedEntity = nullptr;
 	Vortex::Vec2 m_dragOffset = { 0.0f, 0.0f };
@@ -92,7 +92,7 @@ private:
     unsigned int m_occlusionTexture;
     unsigned int m_blurTexture1;
     unsigned int m_blurTexture2;
-    float m_blurScale = 1.0f;
+    float m_blurScale = 2.0f;
     float m_shadowFalloff = 5.0f;
     unsigned int m_albedo_rbo;
     unsigned int m_occlusion_rbo;

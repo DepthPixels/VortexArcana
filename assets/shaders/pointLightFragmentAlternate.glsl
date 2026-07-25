@@ -20,7 +20,7 @@ float rayMarch(vec2 rayOrigin, float rayAngle, vec2 rayDest) {
         }
         vec2 occlusionTexCoords = vec2((rayOrigin.x + (rayProgress * cos(rayAngle)))/1280.0f, 1.0f - ((rayOrigin.y + (rayProgress * sin(rayAngle)))/720.0f));
         vec4 occlusionCheck = texture(occlusionMap, occlusionTexCoords);
-        if (occlusionCheck.x > 0.5f) {
+        if (occlusionCheck.a > 0.6f) {
             return rayProgress;
         }
     }

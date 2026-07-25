@@ -15,6 +15,11 @@
 #include <coreclr_delegates.h>
 #include <hostfxr.h>
 
+#include "Core/Entity.h"
+#include "Core/Components/Physics2D.h"
+#include "Core/Components/SpriteRenderer2D.h"
+#include "Core/Components/PointLight.h"
+
 #define WINDOWS
 
 // Pathing and stuff
@@ -45,6 +50,7 @@ using string_t = std::basic_string<char_t>;
 struct HostConfig {
     const char_t* ScriptDirectory;
     int physics2DOffset;
+    int pointLightOffset;
 };
 struct InstantiateConfig {
 	int* EntityID;
@@ -173,7 +179,7 @@ namespace {
 
         // Execution
         string_t scriptDir = root_path + STR("DebugScripts\\");
-        HostConfig config{ scriptDir.c_str(), offsetof(Vortex::Physics2D, velocity) };
+        HostConfig config{ scriptDir.c_str(), offsetof(Vortex::Physics2D, velocity), offsetof(Vortex::PointLight, color)};
         initialize_handler(&config, sizeof(config));
 
         return EXIT_SUCCESS;
@@ -221,17 +227,21 @@ namespace {
 		return entity->GetComponent<Vortex::Physics2D>();
 	}
 
+    void* GetPointLightWrapper(int* entityID) {
+        Vortex::Entity* entity = reinterpret_cast<Vortex::Entity*>(entityID);
+        return entity->GetComponent<Vortex::PointLight>();
+    }
+
     // Registry
     std::map<int, ComponentGetter> getComponentRegistry = {  // Maps component IDs to their corresponding wrappers.
         {1, GetSpriteRenderer2DWrapper},
-        {2, GetPhysics2DWrapper}
+        {2, GetPhysics2DWrapper},
+        {3, GetPointLightWrapper}
     };
 
 	// GetComponent<T>() Bridge Function
     extern "C" __declspec(dllexport) inline void* Entity_GetComponentBridge(int* entityID, int componentID) {
 		if (getComponentRegistry.find(componentID) != getComponentRegistry.end()) {
-			std::cout << "Physics2D found at: " << getComponentRegistry[componentID](entityID) << std::endl;
-			std::cout << "Location of Velocity: " << &(reinterpret_cast<Vortex::Physics2D*>(getComponentRegistry[componentID](entityID))->Velocity()) << std::endl;
 			return getComponentRegistry[componentID](entityID);
 		}
         return nullptr;
@@ -270,9 +280,23 @@ namespace {
         return &return_vector;
     }
 
+    std::vector<void*>* GetAllPointLightWrapper(int* entityID) {
+        Vortex::Entity* entity = reinterpret_cast<Vortex::Entity*>(entityID);
+        std::vector<Vortex::PointLight*> components = entity->GetComponents<Vortex::PointLight>();
+
+        std::vector<void*> return_vector;
+        return_vector.reserve(components.size());
+
+        std::transform(components.begin(), components.end(), std::back_inserter(return_vector),
+            [](Vortex::PointLight* comp) { return static_cast<void*>(comp); });
+
+        return &return_vector;
+    }
+
     std::map<int, ComponentsGetter> getComponentsRegistry = {  // Maps component IDs to their corresponding wrappers.
         {1, GetAllSpriteRenderer2DWrapper},
-        {2, GetAllPhysics2DWrapper}
+        {2, GetAllPhysics2DWrapper},
+        {3, GetAllPointLightWrapper}
     };
 
     extern "C" __declspec(dllexport) inline void* Entity_GetComponentsBridge(int* entityID, int componentID, int* length) {

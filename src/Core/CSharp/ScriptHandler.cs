@@ -16,6 +16,7 @@ namespace ScriptEngine
         {
             public string ScriptDirectory;
             public int physics2Doffset;
+            public int pointlightoffset;
         }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -35,6 +36,7 @@ namespace ScriptEngine
             Console.WriteLine($"[C# Handler] Script Engine initialized. Initializing Engine for: {config.ScriptDirectory}");
 
             BridgeAPI._Engine_Physics2DOffset = config.physics2Doffset;
+            BridgeAPI._Engine_PointLightOffset = config.pointlightoffset;
 
             _engine = new ScriptHotReloadEngine(config.ScriptDirectory);
 
@@ -116,6 +118,7 @@ namespace ScriptEngine
     public static partial class BridgeAPI
     {
         public static int _Engine_Physics2DOffset;
+        public static int _Engine_PointLightOffset;
 
         // Entity
         [LibraryImport("HostProcess", EntryPoint = "Entity_GetComponentBridge")]

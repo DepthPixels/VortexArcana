@@ -82,38 +82,174 @@ bool Engine::Initialize() {
 	object3->AddComponent(ptlght2);
 	m_entities.push_back(object3);
 	*/
-
-	Vortex::Entity* object1 = new Vortex::Entity();
-	object1->name = "Box 1";
-	object1->bounds = { 100.0f, 100.0f, 200.0f, 200.0f };
-	Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D;
-	object1->AddComponent(spriteComponent);
-	spriteComponent->LoadSprite("assets/Circle.png", true);
-	Vortex::Physics2D* physics2D = new Vortex::Physics2D();
-	physics2D->Mass() = 1000.0f;
-	object1->AddComponent(physics2D);
-	Vortex::Rigidbody* rigidbody = new Vortex::Rigidbody();
-	object1->AddComponent(rigidbody);
-	rigidbody->Initialize(Vortex::CollisionShape::Circle);
-	rigidbody->collider->originOffset = { 100.0f, 100.0f };
-	reinterpret_cast<Vortex::CircleCollisionContainer*>(rigidbody->collider)->radius = 100.0f;
-	m_entities.push_back(object1);
-
-	Vortex::Entity* object2 = new Vortex::Entity();
-	object2->name = "Box 2";
-	object2->bounds = { 100.0f, 350.0f, 200.0f, 200.0f };
-	Vortex::SpriteRenderer2D* sprite2Component = new Vortex::SpriteRenderer2D;
-	object2->AddComponent(sprite2Component);
-	sprite2Component->LoadSprite("assets/Slope.png", true);
-	//Vortex::Physics2D* physics2D2 = new Vortex::Physics2D();
-	//physics2D2->Mass() = 1000.0f;
-	//object2->AddComponent(physics2D2);
+	Vortex::Entity* ball1 = new Vortex::Entity();
+	ball1->name = "Ball 1";
+	ball1->bounds = { 1113.0f, 160.0f, 50.0f, 50.0f };
+	Vortex::Physics2D* physics2D2 = new Vortex::Physics2D();
+	physics2D2->Mass() = 1000.0f;
+	ball1->AddComponent(physics2D2);
 	Vortex::Rigidbody* rigidbody2 = new Vortex::Rigidbody();
-	object2->AddComponent(rigidbody2);
-	rigidbody2->Initialize(Vortex::CollisionShape::StaticOcclusion);
-	reinterpret_cast<Vortex::StaticOcclusionCollisionContainer*>(rigidbody2->collider)->BakeCollisionMask();
-	reinterpret_cast<Vortex::StaticOcclusionCollisionContainer*>(rigidbody2->collider)->LoadBufferFromTexture();
-	m_entities.push_back(object2);
+	ball1->AddComponent(rigidbody2);
+	rigidbody2->Initialize(Vortex::CollisionShape::Circle);
+	rigidbody2->collider->originOffset = { 25.0, 25.0f };
+	reinterpret_cast<Vortex::CircleCollisionContainer*>(rigidbody2->collider)->radius = 25.0f;
+	Vortex::PointLight* light1 = new Vortex::PointLight();
+	light1->originOffset = { 25.0, 25.0f };
+	light1->color = { 0.82f, 0.86f, 0.59f };
+	light1->radius = 100.0f;
+	light1->brightness = 1.5f;
+	light1->falloff = 5.0f;
+	ball1->AddComponent(light1);
+	ball1->scriptsAttached.insert("DebugScripts/FireflyScript.cs");
+	instantiate_script_through_bridge(ball1->EntityID(), STR("FireflyScript.cs"));
+	m_entities.push_back(ball1);
+
+	Vortex::Entity* ball2 = new Vortex::Entity();
+	ball2->name = "Ball 2";
+	ball2->bounds = { 171.0f, 567.0f, 50.0f, 50.0f };
+	Vortex::Physics2D* physics2D3 = new Vortex::Physics2D();
+	physics2D3->Mass() = 1000.0f;
+	ball2->AddComponent(physics2D3);
+	Vortex::Rigidbody* rigidbody3 = new Vortex::Rigidbody();
+	ball2->AddComponent(rigidbody3);
+	rigidbody3->Initialize(Vortex::CollisionShape::Circle);
+	rigidbody3->collider->originOffset = { 25.0, 25.0f };
+	reinterpret_cast<Vortex::CircleCollisionContainer*>(rigidbody3->collider)->radius = 25.0f;
+	Vortex::PointLight* light12 = new Vortex::PointLight();
+	light12->originOffset = { 25.0, 25.0f };
+	light12->color = { 0.82f, 0.86f, 0.59f };
+	light12->radius = 100.0f;
+	light12->brightness = 1.5f;
+	light12->falloff = 5.0f;
+	ball2->AddComponent(light12);
+	ball2->scriptsAttached.insert("DebugScripts/FireflyScript.cs");
+	instantiate_script_through_bridge(ball2->EntityID(), STR("FireflyScript.cs"));
+	m_entities.push_back(ball2);
+
+	Vortex::Entity* ball3 = new Vortex::Entity();
+	ball3->name = "Ball 3";
+	ball3->bounds = { 167.0f, 49.0f, 50.0f, 50.0f };
+	Vortex::Physics2D* physics2D4 = new Vortex::Physics2D();
+	physics2D4->Mass() = 1000.0f;
+	ball3->AddComponent(physics2D4);
+	Vortex::Rigidbody* rigidbody4 = new Vortex::Rigidbody();
+	ball3->AddComponent(rigidbody4);
+	rigidbody4->Initialize(Vortex::CollisionShape::Circle);
+	rigidbody4->collider->originOffset = { 25.0, 25.0f };
+	reinterpret_cast<Vortex::CircleCollisionContainer*>(rigidbody4->collider)->radius = 25.0f;
+	Vortex::PointLight* light13 = new Vortex::PointLight();
+	light13->originOffset = { 25.0, 25.0f };
+	light13->color = { 0.82f, 0.86f, 0.59f };
+	light13->radius = 100.0f;
+	light13->brightness = 1.5f;
+	light13->falloff = 5.0f;
+	ball3->AddComponent(light13);
+	ball3->scriptsAttached.insert("DebugScripts/FireflyScript.cs");
+	instantiate_script_through_bridge(ball3->EntityID(), STR("FireflyScript.cs"));
+	m_entities.push_back(ball3);
+
+	Vortex::Entity* staticlight1 = new Vortex::Entity();
+	staticlight1->name = "Static Light 1";
+	staticlight1->bounds = { 640.0f, 100.0f, 128.0f, 128.0f };
+	Vortex::PointLight* light2 = new Vortex::PointLight();
+	light2->radius = 800.0f;
+	light2->color = { 0.46f, 0.62f, 0.85f };
+	staticlight1->AddComponent(light2);
+	m_entities.push_back(staticlight1);
+
+	Vortex::Entity* staticlight2 = new Vortex::Entity();
+	staticlight2->name = "Static Light 2";
+	staticlight2->bounds = { 454.0f, 286.0f, 128.0f, 128.0f };
+	Vortex::PointLight* light3 = new Vortex::PointLight();
+	light3->radius = 200.0f;
+	light3->color = { 0.46f, 0.62f, 0.85f };
+	staticlight2->AddComponent(light3);
+	m_entities.push_back(staticlight2);
+
+	Vortex::Entity* staticlight3 = new Vortex::Entity();
+	staticlight3->name = "Static Light 3";
+	staticlight3->bounds = { 1028.0f, 353.0f, 128.0f, 128.0f };
+	Vortex::PointLight* light4 = new Vortex::PointLight();
+	light4->radius = 200.0f;
+	light4->color = { 0.46f, 0.62f, 0.85f };
+	staticlight3->AddComponent(light4);
+	m_entities.push_back(staticlight3);
+
+	Vortex::Entity* staticlight4 = new Vortex::Entity();
+	staticlight4->name = "Static Light 4";
+	staticlight4->bounds = { 133.0f, 315.0f, 128.0f, 128.0f };
+	Vortex::PointLight* light5 = new Vortex::PointLight();
+	light5->radius = 200.0f;
+	light5->color = { 0.46f, 0.62f, 0.85f };
+	staticlight4->AddComponent(light5);
+	m_entities.push_back(staticlight4);
+
+	Vortex::Entity* staticlight5 = new Vortex::Entity();
+	staticlight5->name = "Static Light 5";
+	staticlight5->bounds = { 71.0f, 278.0f, 128.0f, 128.0f };
+	Vortex::PointLight* light6 = new Vortex::PointLight();
+	light6->radius = 200.0f;
+	light6->color = { 0.46f, 0.62f, 0.85f };
+	staticlight5->AddComponent(light6);
+	m_entities.push_back(staticlight5);
+
+	Vortex::Entity* staticlight6 = new Vortex::Entity();
+	staticlight6->name = "Static Light 6";
+	staticlight6->bounds = { 962.0f, 445.0f, 128.0f, 128.0f };
+	Vortex::PointLight* light7 = new Vortex::PointLight();
+	light7->radius = 200.0f;
+	light7->color = { 0.46f, 0.62f, 0.85f };
+	staticlight6->AddComponent(light7);
+	m_entities.push_back(staticlight6);
+
+	Vortex::Entity* staticlight7 = new Vortex::Entity();
+	staticlight7->name = "Static Light 7";
+	staticlight7->bounds = { 656.0f, 638.0f, 128.0f, 128.0f };
+	Vortex::PointLight* light8 = new Vortex::PointLight();
+	light8->radius = 200.0f;
+	light8->color = { 0.46f, 0.62f, 0.85f };
+	staticlight7->AddComponent(light8);
+	m_entities.push_back(staticlight7);
+
+	Vortex::Entity* staticlight8 = new Vortex::Entity();
+	staticlight8->name = "Static Light 8";
+	staticlight8->bounds = { 551.0f, 691.0f, 128.0f, 128.0f };
+	Vortex::PointLight* light9 = new Vortex::PointLight();
+	light9->radius = 200.0f;
+	light9->color = { 0.46f, 0.62f, 0.85f };
+	staticlight8->AddComponent(light9);
+	m_entities.push_back(staticlight8);
+
+	Vortex::Entity* staticlight9 = new Vortex::Entity();
+	staticlight9->name = "Static Light 9";
+	staticlight9->bounds = { 37.0f, 692.0f, 128.0f, 128.0f };
+	Vortex::PointLight* light10 = new Vortex::PointLight();
+	light10->radius = 200.0f;
+	light10->color = { 0.46f, 0.62f, 0.85f };
+	staticlight9->AddComponent(light10);
+	m_entities.push_back(staticlight9);
+
+	Vortex::Entity* staticlight10 = new Vortex::Entity();
+	staticlight10->name = "Static Light 10";
+	staticlight10->bounds = { 800.0f, 686.0f, 128.0f, 128.0f };
+	Vortex::PointLight* light11 = new Vortex::PointLight();
+	light11->radius = 200.0f;
+	light11->color = { 0.46f, 0.62f, 0.85f };
+	staticlight10->AddComponent(light11);
+	m_entities.push_back(staticlight10);
+
+	Vortex::Entity* terrain = new Vortex::Entity();
+	terrain->name = "Terrain";
+	terrain->bounds = { 0.0f, 0.0f, 1280.0f, 720.0f };
+	Vortex::SpriteRenderer2D* spriteComponent = new Vortex::SpriteRenderer2D;
+	terrain->AddComponent(spriteComponent);
+	spriteComponent->LoadSprite("assets/terrain.png", true);
+	Vortex::Rigidbody* rigidbody = new Vortex::Rigidbody();
+	terrain->AddComponent(rigidbody);
+	rigidbody->Initialize(Vortex::CollisionShape::StaticOcclusion);
+	reinterpret_cast<Vortex::StaticOcclusionCollisionContainer*>(rigidbody->collider)->BakeCollisionMask();
+	reinterpret_cast<Vortex::StaticOcclusionCollisionContainer*>(rigidbody->collider)->LoadBufferFromTexture();
+	m_entities.push_back(terrain);
 
 	// Camera Stuff
 	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
@@ -346,6 +482,16 @@ void Engine::ProcessInput() {
 					m_isDragging = true;
 				}
 			}
+			if (event.button.button == SDL_BUTTON_RIGHT) {
+				Vortex::Vec2 clickPos = { event.button.x, event.button.y };
+				if (m_viewportRect.isPosInRect(clickPos)) {
+					if (m_selectedEntity != nullptr) {
+						m_selectedEntity->isSelected = false;
+						m_selectedEntity->isBeingDragged = false;
+						m_selectedEntity = nullptr;
+					}
+				}
+			}
 			break;
 		case SDL_EVENT_MOUSE_BUTTON_UP:
 			if (event.button.button == SDL_BUTTON_LEFT) {
@@ -504,7 +650,7 @@ void Engine::Render() {
 
 	// Bind to Occlusion FBO.
 	glBindFramebuffer(GL_FRAMEBUFFER, m_occlusion_fbo);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glEnable(GL_BLEND);
@@ -556,7 +702,7 @@ void Engine::Render() {
 		entity->RenderLights(m_lightData, lightCount);
 	}
 
-	size_t bufferSize = m_lightData.size() * sizeof(Vortex::Vec2);
+	size_t bufferSize = m_lightData.size() * sizeof(float);
 
 	// Activate Shader Program.
 	m_lightingShader->use();
@@ -571,7 +717,7 @@ void Engine::Render() {
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_ssbo);
 
 	// Upload the padded data
-	glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_lightData.size() * sizeof(Vortex::Vec2), m_lightData.data());
+	glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_lightData.size() * sizeof(float), m_lightData.data());
 	
 	GLenum err = glGetError();
 	while (err != GL_NO_ERROR) {

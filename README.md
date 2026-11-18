@@ -9,6 +9,12 @@
 
 **VortexArcana** is a high-performance 2D game engine and editor built from scratch in modern **C++20**. It features a custom multi-pass deferred rendering pipeline with dynamic lighting and soft shadows, a cache-friendly Entity-Component System (ECS), an integrated Dear ImGui docking editor, and native **.NET 10 / CoreCLR** runtime embedding via `nethost` for hot-reloadable C# gameplay scripting.
 
+<p align="center">
+  <img src="docs/editor_preview.jpg" alt="VortexArcana 2D Deferred Engine and Editor" width="750"/>
+  <br>
+  <em>VortexArcana Docking Editor: Multi-pass deferred 2D lighting, dynamic light rays and soft shadows, and live entity inspection.</em>
+</p>
+
 ---
 
 ## Architectural Highlights
